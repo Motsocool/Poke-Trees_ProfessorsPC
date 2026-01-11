@@ -1,35 +1,85 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { FileUpload } from './components/FileUpload';
+import { VaultDisplay } from './components/VaultDisplay';
+import { PokemonDetail } from './components/PokemonDetail';
+import type { VaultPokemon } from './lib/types';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedPokemon, setSelectedPokemon] = useState<VaultPokemon | null>(null);
+  const [activeTab, setActiveTab] = useState<'import' | 'vault' | 'export'>('import');
+
+  const handleImportComplete = (_count: number) => {
+    setRefreshTrigger((prev) => prev + 1);
+    setActiveTab('vault');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div className="app">
+      <header className="app-header">
+        <h1>🎮 Pokémon Tree's: Professor's PC</h1>
+        <p className="app-subtitle">Import, Legalize & Inject Pokémon across Gen 1-3</p>
+      </header>
+
+      <nav className="app-nav">
+        <button
+          className={activeTab === 'import' ? 'active' : ''}
+          onClick={() => setActiveTab('import')}
+        >
+          📁 Import
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
+        <button
+          className={activeTab === 'vault' ? 'active' : ''}
+          onClick={() => setActiveTab('vault')}
+        >
+          💾 Vault
+        </button>
+        <button
+          className={activeTab === 'export' ? 'active' : ''}
+          onClick={() => setActiveTab('export')}
+        >
+          💉 Export
+        </button>
+      </nav>
+
+      <main className="app-main">
+        {activeTab === 'import' && (
+          <FileUpload onImportComplete={handleImportComplete} />
+        )}
+
+        {activeTab === 'vault' && (
+          <VaultDisplay
+            refreshTrigger={refreshTrigger}
+            onSelectPokemon={setSelectedPokemon}
+          />
+        )}
+
+        {activeTab === 'export' && (
+          <div className="export-section">
+            <h2>Export to Gen 3 Save File</h2>
+            <p>Coming soon: Inject Pokémon back into Gen 3 save files</p>
+          </div>
+        )}
+      </main>
+
+      {selectedPokemon && (
+        <PokemonDetail
+          pokemon={selectedPokemon}
+          onClose={() => setSelectedPokemon(null)}
+        />
+      )}
+
+      <footer className="app-footer">
+        <p>Offline-first PWA • All data stored locally in your browser</p>
+        <p className="credits">
+          Based on <a href="https://github.com/pret/pokered" target="_blank">pokered</a>,{' '}
+          <a href="https://github.com/pret/pokecrystal" target="_blank">pokecrystal</a>,{' '}
+          <a href="https://github.com/pret/pokeemerald" target="_blank">pokeemerald</a>
         </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      </footer>
+    </div>
+  );
 }
 
-export default App
+export default App;

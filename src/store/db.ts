@@ -3,8 +3,8 @@
  * Uses idb library for simplified IndexedDB operations
  */
 
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { VaultPokemon, Gen3Pokemon } from '../types';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { VaultPokemon } from '../lib/types/index.js';
 
 /**
  * Database schema

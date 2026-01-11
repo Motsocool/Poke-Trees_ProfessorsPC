@@ -50,14 +50,13 @@ import type {
   ParsedSaveFile,
   Box,
   Gen12Pokemon,
-  GameVersion,
   SaveFileMetadata,
   DVs,
   EVs,
   Stats,
   Move,
-  StatusCondition,
 } from '../types';
+import { GameVersion, StatusCondition } from '../types';
 
 /**
  * Parse a Gen 2 save file

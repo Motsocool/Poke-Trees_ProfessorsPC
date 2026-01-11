@@ -4,7 +4,8 @@
  * Reference: https://github.com/GearsProgress/Pokemon-Community-Conversion-Standard
  */
 
-import type { Gen12Pokemon, Gen3Pokemon, DVs, IVs, GameVersion } from '../types';
+import type { Gen12Pokemon, DVs, IVs, GameVersion } from '../types';
+import type { VaultPokemon } from '../types';
 
 /**
  * Convert Gen 1/2 Pokémon to Gen 3 format
@@ -13,15 +14,17 @@ import type { Gen12Pokemon, Gen3Pokemon, DVs, IVs, GameVersion } from '../types'
 export function convertGen12ToGen3(
   gen12Pokemon: Gen12Pokemon,
   sourceGame: GameVersion
-): Gen3Pokemon {
+): Omit<VaultPokemon, 'id' | 'importDate'> {
   // Convert DVs to IVs
   const ivs = convertDVsToIVs(gen12Pokemon.dvs);
+  
+  const gender = gen12Pokemon.gender || 'U';
   
   // Generate personality value that preserves shiny status and gender
   const personalityValue = generatePersonalityValue(
     gen12Pokemon.dvs,
     gen12Pokemon.shiny,
-    gen12Pokemon.gender,
+    gender,
     gen12Pokemon.species
   );
   
@@ -63,16 +66,14 @@ export function convertGen12ToGen3(
     personalityValue,
     nature,
     ability,
-    gender: gen12Pokemon.gender,
+    gender,
     shiny: gen12Pokemon.shiny,
     ball: 4, // Poké Ball (default)
     statusCondition: gen12Pokemon.statusCondition,
     currentHP: gen12Pokemon.currentHP,
     stats,
-    id: '', // Will be set when storing in vault
     sourceGeneration: gen12Pokemon.dvs ? (gen12Pokemon.friendship ? 2 : 1) : 1,
     sourceGame,
-    importDate: new Date(),
     isLegal: true,
     legalityNotes: [],
   };
