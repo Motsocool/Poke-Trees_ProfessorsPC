@@ -1,73 +1,116 @@
-# React + TypeScript + Vite
+# 🎮 Pokémon Tree's: Professor's PC
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Progressive Web App (PWA) for importing, legalizing, and injecting Pokémon across save files from Gen 1, Gen 2, and Gen 3 games. Built with React, TypeScript, and Vite with offline-first functionality via IndexedDB.
 
-Currently, two official plugins are available:
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-19.2.0-61dafb.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue.svg)
+![Vite](https://img.shields.io/badge/Vite-7.2.4-646cff.svg)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## React Compiler
+### 🎲 Import Save Files
+- **Gen 1**: Red, Blue, Yellow (32KB .sav files)
+- **Gen 2**: Gold, Silver, Crystal (32KB .sav files)
+- **Gen 3**: Ruby, Sapphire, Emerald, FireRed, LeafGreen (128KB .sav files)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🔄 Automatic Conversion
+- **DV → IV Conversion**: Converts Gen 1/2 Determinant Values (DVs) to Gen 3 Individual Values (IVs)
+- **PCCS Compliance**: Follows the [Pokémon Community Conversion Standard](https://github.com/GearsProgress/Pokemon-Community-Conversion-Standard)
+- **Shiny Preservation**: Maintains shiny status during conversion
+- **Gender Mapping**: Properly maps gender from Gen 2+ to Gen 3
 
-## Expanding the ESLint configuration
+### ✅ Legality Validation
+- IV/EV range validation
+- Move legality checking
+- Species and level validation
+- Shiny verification
+- Automatic flagging of suspicious Pokémon
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 💾 Local-First Storage
+- **IndexedDB**: All Pokémon stored locally in your browser
+- **Offline Support**: Full functionality without internet connection
+- **PWA**: Install as a native app on any device
+- **Search & Filter**: Find Pokémon by species, level, legality status
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 💉 Export & Injection (Coming Soon)
+- Inject validated Pokémon back into Gen 3 save files
+- Automatic checksum calculation and verification
+- Preserve save file integrity
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🚀 Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Prerequisites
+- Node.js 20.x or higher
+- npm or yarn
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Installation
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Motsocool/Poke-Trees_ProfessorsPC.git
+   cd Poke-Trees_ProfessorsPC
+   ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Build for production**
+   ```bash
+   npm run build
+   ```
+
+## 📖 Usage
+
+### Importing Save Files
+
+1. Navigate to the **Import** tab
+2. Click "Choose Save File"
+3. Select your Pokémon save file (.sav, .gba, .gbc, .gb)
+4. Wait for processing to complete
+5. View imported Pokémon in the **Vault** tab
+
+### Managing Your Vault
+
+- **View All**: See all imported Pokémon
+- **Filter by Legality**: View only legal or flagged Pokémon
+- **View Details**: Click any Pokémon card to see full stats, IVs, EVs, and moves
+- **Delete**: Remove Pokémon from your vault
+
+## 🏗️ Architecture
+
+### Key Technologies
+
+- **React 19**: Modern UI library
+- **TypeScript**: Type-safe development
+- **Vite**: Fast build tool and dev server
+- **IndexedDB (idb)**: Client-side database
+- **Vite PWA Plugin**: Progressive Web App support
+
+## 📚 References
+
+### Game Disassemblies
+- [pret/pokered](https://github.com/pret/pokered) - Gen 1 Red/Blue/Yellow
+- [pret/pokecrystal](https://github.com/pret/pokecrystal) - Gen 2 Gold/Silver/Crystal
+- [pret/pokeemerald](https://github.com/pret/pokeemerald) - Gen 3 Emerald
+
+### Standards & Tools
+- [Pokemon Community Conversion Standard](https://github.com/GearsProgress/Pokemon-Community-Conversion-Standard)
+- [Poke Transporter GB](https://github.com/GearsProgress/Poke_Transporter_GB)
+
+## ⚠️ Disclaimer
+
+This tool is for educational purposes and personal backup management. Always keep backups of your save files.
+
+Pokémon and all related names are trademarks of Nintendo, Game Freak, and The Pokémon Company.
+
+---
+
+**Made with ❤️ for the Pokémon community**
