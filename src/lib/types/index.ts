@@ -127,6 +127,7 @@ export interface VaultPokemon extends Gen3Pokemon {
   importDate: Date;
   isLegal: boolean;
   legalityNotes: string[];
+  pk3Data: ArrayBuffer; // Serialized pk3 for storage
 }
 
 // Save file metadata

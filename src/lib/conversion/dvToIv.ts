@@ -8,11 +8,12 @@ import type { Gen12Pokemon, DVs, IVs, GameVersion, VaultPokemon } from '../types
 
 /**
  * Convert Gen 1/2 Pokémon to Gen 3 format following PCCS
+ * Note: pk3Data will need to be created separately when storing
  */
 export function convertGen12ToGen3(
   gen12Pokemon: Gen12Pokemon,
   sourceGame: GameVersion
-): Omit<VaultPokemon, 'id' | 'importDate'> {
+): Omit<VaultPokemon, 'id' | 'importDate' | 'pk3Data'> {
   // Convert DVs to IVs
   const ivs = convertDVsToIVs(gen12Pokemon.dvs);
   
@@ -106,8 +107,8 @@ export function convertDVsToIVs(dvs: DVs): IVs {
 export function generatePersonalityValue(
   dvs: DVs,
   isShiny: boolean,
-  gender: 'M' | 'F' | 'U',
-  species: number
+  _gender: 'M' | 'F' | 'U',
+  _species: number
 ): number {
   // Start with a base value derived from DVs
   let pid = (dvs.attack << 28) | (dvs.defense << 24) | (dvs.speed << 20) | (dvs.special << 16);
