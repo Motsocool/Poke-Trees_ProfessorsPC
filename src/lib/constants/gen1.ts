@@ -8,12 +8,20 @@ export const GEN1_SAVE_SIZE = 0x8000; // 32KB (32768 bytes)
 
 // Trainer data
 export const GEN1_PLAYER_NAME_OFFSET = 0x2598;
+export const GEN1_PLAYER_NAME_LENGTH = 11;
 export const GEN1_PLAYER_ID_OFFSET = 0x2605;
+
+// Checksum
+export const GEN1_CHECKSUM_OFFSET = 0x3523;
 
 // Box data
 export const GEN1_CURRENT_BOX_OFFSET = 0x284C;
 export const GEN1_NUM_BOXES = 12;
 export const GEN1_POKEMON_PER_BOX = 20;
+export const GEN1_CURRENT_BOX_DATA_OFFSET = 0x30C0;
+export const GEN1_BOX_1_6_OFFSET = 0x4000;
+export const GEN1_BOX_7_12_OFFSET = 0x6000;
+export const GEN1_BOX_SIZE = 462;
 
 // Pokémon data structure sizes
 export const GEN1_POKEMON_DATA_SIZE = 44;
@@ -39,12 +47,3 @@ export const GEN1_PP_OFFSET = 29;
 export const GEN1_OT_NAME_LENGTH = 11;
 export const GEN1_NICKNAME_LENGTH = 11;
 export const GEN1_STRING_TERMINATOR = 0x50;
-
-// Checksums
-export const GEN1_CHECKSUM_OFFSET = 0x3523;
-
-// Box structure - Gen 1 uses complex SRAM banking
-export const GEN1_CURRENT_BOX_DATA_OFFSET = 0x30C0;
-export const GEN1_BOX_1_6_OFFSET = 0x4000;
-export const GEN1_BOX_7_12_OFFSET = 0x6000;
-export const GEN1_BOX_SIZE = 462;
