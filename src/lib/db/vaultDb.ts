@@ -17,7 +17,8 @@ export interface StoredPokemon {
   tid: number; // Trainer ID
   sid: number; // Secret ID
   isValid: boolean; // Checksum validity
-  sourceGame?: string; // Ruby/Sapphire/Emerald/FireRed/LeafGreen
+  sourceGame?: string; // Ruby/Sapphire/Emerald/FireRed/LeafGreen or "Gen 1/2 (Converted)"
+  sourceGeneration?: number; // 1, 2, or 3 - tracks original generation
   importedAt: number; // Timestamp
 }
 

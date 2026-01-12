@@ -155,7 +155,19 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
                 </div>
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: '#999' }}>
-                OT: {p.otName}
+                OT: {p.otName} • {p.sourceGame || 'Gen 3'}
+                {p.sourceGeneration && p.sourceGeneration !== 3 && (
+                  <span style={{
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    background: '#fef5e7',
+                    color: '#b7791f',
+                    borderRadius: '4px',
+                    fontWeight: 'bold'
+                  }}>
+                    Gen {p.sourceGeneration} → 3
+                  </span>
+                )}
               </div>
               {!p.isValid && (
                 <div style={{ marginTop: '4px', fontSize: '11px', color: '#c53030' }}>

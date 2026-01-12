@@ -7,8 +7,9 @@ import { decodeGen3String } from '../lib/species/speciesTranscode';
 import { parseGen1Save } from '../lib/parsers/gen1';
 import { parseGen2Save } from '../lib/parsers/gen2';
 import { convertGen12ToGen3 } from '../lib/conversion/dvToIv';
+import { encodePokemonToPk3 } from '../lib/conversion/pk3Encoder';
 import { checkLegality } from '../lib/legality/validator';
-import type { Gen12Pokemon } from '../lib/types';
+import type { Gen12Pokemon, VaultPokemon } from '../lib/types';
 
 interface SaveImportProps {
   onImportComplete: () => void;
@@ -105,7 +106,8 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
           tid,
           sid,
           isValid,
-          sourceGame: 'Gen3',
+          sourceGame: 'Gen 3 Native',
+          sourceGeneration: 3,
           importedAt: Date.now(),
         });
       } catch (err) {
@@ -142,15 +144,19 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
           // Validate legality
           const legalityCheck = checkLegality(gen3Pokemon);
 
-          // For now, store as a placeholder until we have full pk3 encoding
-          // This would need the full pk3 encoding implementation
-          const placeholderPk3 = new ArrayBuffer(100);
-          const pk3View = new DataView(placeholderPk3);
-          pk3View.setUint32(0, gen3Pokemon.personalityValue, true);
-          pk3View.setUint16(4, gen3Pokemon.species, true);
+          // Create full VaultPokemon structure for encoding
+          const vaultPokemon: VaultPokemon = {
+            ...gen3Pokemon,
+            id: '', // Will be assigned by vault
+            importDate: new Date(),
+            pk3Data: new ArrayBuffer(0), // Temporary, will be replaced
+          };
+
+          // Encode to pk3 binary format
+          const pk3Data = encodePokemonToPk3(vaultPokemon);
 
           toStore.push({
-            pk3Data: placeholderPk3,
+            pk3Data: pk3Data,
             personality: gen3Pokemon.personalityValue,
             species: gen3Pokemon.species,
             nickname: gen3Pokemon.nickname,
@@ -159,7 +165,8 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
             tid: gen3Pokemon.otId,
             sid: gen3Pokemon.otSecretId || 0,
             isValid: legalityCheck.isLegal,
-            sourceGame: `${parsedSave.metadata.game} (Converted)`,
+            sourceGame: `${parsedSave.metadata.game} (Gen ${parsedSave.metadata.generation} → Gen 3)`,
+            sourceGeneration: parsedSave.metadata.generation,
             importedAt: Date.now(),
           });
         } catch (err) {
