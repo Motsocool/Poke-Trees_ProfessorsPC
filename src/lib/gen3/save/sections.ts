@@ -6,7 +6,6 @@
 import { readU16, readU32, safeSlice } from '../../utils/bin';
 import {
   GEN3_SAVE_SIZE,
-  GEN3_SAVE_SLOT_SIZE,
   GEN3_SECTION_SIZE,
   GEN3_SECTION_DATA_SIZE,
   GEN3_NUM_SECTIONS,
