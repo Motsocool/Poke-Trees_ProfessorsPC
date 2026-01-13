@@ -11,7 +11,6 @@ import {
   loadExpTable,
   getLevelFromExp,
   clearDataCache,
-  type Generation,
 } from './dataLoader';
 
 // Mock fetch for testing
@@ -332,8 +331,8 @@ describe('Data Loader', () => {
         text: async () => mockData,
       } as Response);
 
-      const table1 = await loadExpTable('Gen1');
-      const table2 = await loadExpTable('Gen1', 1);
+      await loadExpTable('Gen1');
+      await loadExpTable('Gen1', 1);
 
       // Both should use same cached data
       expect(global.fetch).toHaveBeenCalledTimes(1);
