@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllPokemon, countPokemon, StoredPokemon, clearVault } from '../lib/db/vaultDb';
+import { getAllPokemon, countPokemon, StoredPokemon, clearVault, deletePokemon } from '../lib/db/vaultDb';
 import { getSpeciesName } from '../lib/species/speciesTranscode';
 
 interface VaultViewProps {
@@ -15,6 +15,8 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
   const [showInvalidOnly, setShowInvalidOnly] = useState(false);
   const [showShinyOnly, setShowShinyOnly] = useState(false);
   const [filterGeneration, setFilterGeneration] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchMode, setBatchMode] = useState(false);
 
   const loadPokemon = async () => {
     setLoading(true);
@@ -45,6 +47,51 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
     } catch (err) {
       console.error('Failed to clear vault:', err);
       alert('Failed to clear vault');
+    }
+  };
+
+  const toggleBatchMode = () => {
+    setBatchMode(!batchMode);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelection = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(filteredPokemon.map(p => p.id as number)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const deleteBatchSelected = async () => {
+    if (selectedIds.size === 0) {
+      alert('No Pokémon selected');
+      return;
+    }
+
+    if (!confirm(`Delete ${selectedIds.size} selected Pokémon? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      for (const id of selectedIds) {
+        await deletePokemon(id);
+      }
+      setSelectedIds(new Set());
+      await loadPokemon();
+    } catch (err) {
+      console.error('Failed to delete selected Pokémon:', err);
+      alert('Failed to delete some Pokémon');
     }
   };
 
@@ -95,13 +142,54 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>
           Pokémon Vault ({count})
+          {batchMode && selectedIds.size > 0 && (
+            <span style={{ marginLeft: '8px', fontSize: '16px', color: '#667eea' }}>
+              ({selectedIds.size} selected)
+            </span>
+          )}
         </h2>
-        {count > 0 && (
-          <button className="btn-danger" onClick={handleClearVault}>
-            Clear Vault
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {count > 0 && (
+            <>
+              <button 
+                className={batchMode ? 'btn-primary' : 'btn'}
+                onClick={toggleBatchMode}
+              >
+                {batchMode ? '✓ Batch Mode' : 'Select Multiple'}
+              </button>
+              <button className="btn-danger" onClick={handleClearVault}>
+                Clear Vault
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {batchMode && count > 0 && (
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '12px',
+          padding: '12px',
+          background: '#edf2f7',
+          borderRadius: '8px',
+        }}>
+          <button className="btn" onClick={selectAll}>
+            Select All ({filteredPokemon.length})
+          </button>
+          <button className="btn" onClick={deselectAll}>
+            Deselect All
+          </button>
+          <button 
+            className="btn-danger" 
+            onClick={deleteBatchSelected}
+            disabled={selectedIds.size === 0}
+            style={{ opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+          >
+            Delete Selected ({selectedIds.size})
+          </button>
+        </div>
+      )}
 
       {count > 0 && (
         <>
@@ -219,31 +307,54 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
           {filteredPokemon.map((p) => {
             // Calculate if shiny
             const isShiny = ((p.personality & 0xFFFF) ^ (p.personality >>> 16)) < 8;
+            const isSelected = selectedIds.has(p.id as number);
             
             return (
             <div
               key={p.id}
-              onClick={() => onSelectPokemon(p)}
+              onClick={() => {
+                if (batchMode) {
+                  toggleSelection(p.id as number);
+                } else {
+                  onSelectPokemon(p);
+                }
+              }}
               style={{
                 padding: '16px',
-                background: selectedPokemon?.id === p.id ? '#e6f2ff' : '#f7fafc',
-                border: `2px solid ${selectedPokemon?.id === p.id ? '#667eea' : '#e2e8f0'}`,
+                background: batchMode && isSelected ? '#e6f2ff' : (selectedPokemon?.id === p.id ? '#e6f2ff' : '#f7fafc'),
+                border: `2px solid ${(batchMode && isSelected) || selectedPokemon?.id === p.id ? '#667eea' : '#e2e8f0'}`,
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 position: 'relative',
               }}
               onMouseEnter={(e) => {
-                if (selectedPokemon?.id !== p.id) {
+                if (!batchMode && selectedPokemon?.id !== p.id) {
                   e.currentTarget.style.background = '#edf2f7';
                 }
               }}
               onMouseLeave={(e) => {
-                if (selectedPokemon?.id !== p.id) {
+                if (!batchMode && selectedPokemon?.id !== p.id) {
                   e.currentTarget.style.background = '#f7fafc';
                 }
               }}
             >
+              {batchMode && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelection(p.id as number)}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
               {isShiny && (
                 <div style={{
                   position: 'absolute',
