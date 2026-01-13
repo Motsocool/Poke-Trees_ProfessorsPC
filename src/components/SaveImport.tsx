@@ -6,6 +6,7 @@ import { parseGrowth, calculateLevel, extractTrainerIds } from '../lib/gen3/pk3/
 import { decodeGen3String } from '../lib/species/speciesTranscode';
 import { parseGen1Save } from '../lib/parsers/gen1';
 import { parseGen2Save } from '../lib/parsers/gen2';
+import { autoNormalizeSave } from '../lib/parsers/normalization';
 import { convertGen12ToGen3 } from '../lib/conversion/dvToIv';
 import { encodePokemonToPk3 } from '../lib/conversion/pk3Encoder';
 import { checkLegality } from '../lib/legality/validator';
@@ -32,33 +33,33 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
       // Read file as ArrayBuffer
       const buffer = await file.arrayBuffer();
 
-      // Detect generation by file size
-      const size = buffer.byteLength;
+      // Auto-normalize and detect generation
+      const { normalized, generation, result } = autoNormalizeSave(buffer);
+      
+      let statusMsg = '';
+      if (result.wasTrimmed) {
+        statusMsg = `\nNote: File was ${result.originalSize} bytes, trimmed ${result.trimmedBytes} bytes to standard ${result.targetSize} bytes.`;
+      }
+
       let toStore: StoredPokemon[] = [];
 
-      if (size === 0x8000) {
-        // 32KB - Gen 1 or Gen 2
-        toStore = await importGen12Save(buffer, file.name);
-      } else if (size === 0x20000) {
-        // 128KB - Gen 3
-        toStore = await importGen3Save(buffer);
+      if (generation === 1 || generation === 2) {
+        // Gen 1/2 save
+        toStore = await importGen12Save(normalized, generation);
       } else {
-        throw new Error(
-          `Invalid save file size: ${size} bytes. Expected:\n` +
-          `- 32KB (32,768 bytes) for Gen 1/2\n` +
-          `- 128KB (131,072 bytes) for Gen 3`
-        );
+        // Gen 3 save
+        toStore = await importGen3Save(normalized);
       }
 
       if (toStore.length === 0) {
-        setSuccess('Save file loaded successfully, but no Pokémon found in PC boxes.');
+        setSuccess(`Save file loaded successfully${statusMsg}, but no Pokémon found in PC boxes.`);
         return;
       }
 
       // Store in vault
       await addMultiplePokemon(toStore);
 
-      setSuccess(`Successfully imported ${toStore.length} Pokémon from ${file.name}!`);
+      setSuccess(`Successfully imported ${toStore.length} Pokémon from ${file.name}!${statusMsg}`);
       onImportComplete();
 
       // Reset file input
@@ -118,12 +119,12 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
     return toStore;
   }
 
-  async function importGen12Save(buffer: ArrayBuffer): Promise<StoredPokemon[]> {
-    // Try Gen 2 first (more features), fall back to Gen 1
+  async function importGen12Save(buffer: ArrayBuffer, generation: 1 | 2): Promise<StoredPokemon[]> {
+    // Parse based on detected generation
     let parsedSave;
-    try {
+    if (generation === 2) {
       parsedSave = parseGen2Save(buffer);
-    } catch {
+    } else {
       parsedSave = parseGen1Save(buffer);
     }
 
