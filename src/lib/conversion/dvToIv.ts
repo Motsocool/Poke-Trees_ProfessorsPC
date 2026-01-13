@@ -103,6 +103,11 @@ export function convertDVsToIVs(dvs: DVs): IVs {
 /**
  * Generate personality value that preserves shiny status and gender
  * Critical for PCCS compliance
+ * 
+ * Gen 3 shininess formula: ((PID_high ^ PID_low) ^ (TID ^ SID)) < 8
+ * 
+ * For non-shiny Pokemon, we need to ensure the XOR result is >= 8
+ * For shiny Pokemon, we need to ensure the XOR result is < 8
  */
 export function generatePersonalityValue(
   dvs: DVs,
@@ -110,17 +115,36 @@ export function generatePersonalityValue(
   _gender: 'M' | 'F' | 'U',
   _species: number
 ): number {
-  // Start with a base value derived from DVs
-  let pid = (dvs.attack << 28) | (dvs.defense << 24) | (dvs.speed << 20) | (dvs.special << 16);
-  pid |= (dvs.attack << 12) | (dvs.defense << 8) | (dvs.speed << 4) | dvs.special;
+  // Generate a base PID from DVs for consistency
+  const basePid = (dvs.attack << 28) | (dvs.defense << 24) | (dvs.speed << 20) | (dvs.special << 16) |
+                  (dvs.attack << 12) | (dvs.defense << 8) | (dvs.speed << 4) | dvs.special;
   
-  // If shiny, adjust PID to ensure shininess
-  // Gen 3 shininess: (PID_upper ^ PID_lower ^ TID ^ SID) < 8
+  // If should be shiny, generate a shiny PID
   if (isShiny) {
-    pid = (pid & 0xFFFF0000) | ((pid & 0xFFFF) | 0x0001);
+    // For converted Pokemon, use TID=0, SID=0 (they don't have SID in Gen 1/2)
+    // Generate PID where (PID_high ^ PID_low ^ 0 ^ 0) < 8
+    // This means (PID_high ^ PID_low) < 8
+    const pidHigh = (basePid >>> 16) & 0xFFFF;
+    let pidLow = basePid & 0xFFFF;
+    
+    // Adjust lower 16 bits to make XOR result < 8
+    const targetXor = (pidHigh ^ pidLow) % 8; // 0-7
+    pidLow = (pidLow & 0xFFF8) | targetXor;
+    
+    return ((pidHigh << 16) | pidLow) >>> 0;
+  } else {
+    // For non-shiny, ensure (PID_high ^ PID_low) >= 8
+    let pidHigh = (basePid >>> 16) & 0xFFFF;
+    let pidLow = basePid & 0xFFFF;
+    
+    const xorResult = pidHigh ^ pidLow;
+    if (xorResult < 8) {
+      // Force XOR to be >= 8 by modifying lower bits
+      pidLow = (pidLow & 0xFFF8) | 0x08;
+    }
+    
+    return ((pidHigh << 16) | pidLow) >>> 0;
   }
-  
-  return pid >>> 0; // Ensure unsigned 32-bit
 }
 
 /**
