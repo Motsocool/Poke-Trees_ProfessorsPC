@@ -74,10 +74,13 @@ export async function loadTextConvTable(gen: Generation): Promise<TextConvTable>
     // Parse lines like "A 128" or "' 224"
     const parts = trimmed.split(/\s+/);
     if (parts.length >= 2) {
-      const char = parts[0]!;
-      const code = parseInt(parts[1]!, 10);
-      if (!isNaN(code)) {
-        table[char] = code;
+      const char = parts[0];
+      const codeStr = parts[1];
+      if (char && codeStr) {
+        const code = parseInt(codeStr, 10);
+        if (!isNaN(code)) {
+          table[char] = code;
+        }
       }
     }
   }
@@ -162,14 +165,16 @@ export async function loadPokemonNames(gen: Generation): Promise<string[]> {
 }
 
 /**
- * Get Pokémon name from index
+ * Get Pokémon name from species index
+ * Note: Index 0 is valid and may contain data like 'MissingNo.' depending on generation
  */
 export async function getPokemonName(
   speciesIndex: number,
   gen: Generation
 ): Promise<string> {
   const names = await loadPokemonNames(gen);
-  return names[speciesIndex] ?? `Unknown (${speciesIndex})`;
+  const name = names[speciesIndex];
+  return name !== undefined ? name : `Unknown (${speciesIndex})`;
 }
 
 /**
@@ -201,9 +206,13 @@ export async function loadExpTables(gen: Generation): Promise<number[][]> {
     // Each line represents a level, with 6 values for 6 different growth curves
     const parts = trimmed.split(/\s+/);
     for (let i = 0; i < Math.min(parts.length, 6); i++) {
-      const exp = parseInt(parts[i]!, 10);
-      if (!isNaN(exp)) {
-        expTables[i]!.push(exp);
+      const part = parts[i];
+      const table = expTables[i];
+      if (part && table) {
+        const exp = parseInt(part, 10);
+        if (!isNaN(exp)) {
+          table.push(exp);
+        }
       }
     }
   }
@@ -220,7 +229,11 @@ export async function loadExpTables(gen: Generation): Promise<number[][]> {
  */
 export async function loadExpTable(gen: Generation, curve: GrowthCurve = 0): Promise<number[]> {
   const tables = await loadExpTables(gen);
-  return tables[curve]!;
+  const table = tables[curve];
+  if (!table) {
+    throw new Error(`Invalid growth curve: ${curve}`);
+  }
+  return table;
 }
 
 /**
@@ -237,7 +250,8 @@ export async function getLevelFromExp(
   const expTable = await loadExpTable(gen, curve);
   
   for (let level = 0; level < expTable.length; level++) {
-    if (exp < expTable[level]!) {
+    const requiredExp = expTable[level];
+    if (requiredExp !== undefined && exp < requiredExp) {
       return level;
     }
   }
