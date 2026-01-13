@@ -20,13 +20,19 @@ export interface ReverseTextConvTable {
 }
 
 /**
+ * Experience growth curves
+ * Each curve represents a different rate at which Pokémon gain levels
+ */
+export type GrowthCurve = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
  * Cached data for each generation
  */
 interface GenerationData {
   textConvTable?: TextConvTable;
   reverseTextConvTable?: ReverseTextConvTable;
   pokemonNames?: string[];
-  expTable?: number[];
+  expTables?: number[][]; // Array of 6 experience curves
 }
 
 const dataCache: Record<Generation, GenerationData> = {
@@ -167,12 +173,13 @@ export async function getPokemonName(
 }
 
 /**
- * Load experience table from pokemon_exp.txt
+ * Load experience tables from pokemon_exp.txt
+ * Returns array of 6 experience curves
  */
-export async function loadExpTable(gen: Generation): Promise<number[]> {
+export async function loadExpTables(gen: Generation): Promise<number[][]> {
   // Check cache first
-  if (dataCache[gen].expTable) {
-    return dataCache[gen].expTable!;
+  if (dataCache[gen].expTables) {
+    return dataCache[gen].expTables!;
   }
 
   const path = getDataPath(gen, 'pokemon_exp.txt');
@@ -183,37 +190,51 @@ export async function loadExpTable(gen: Generation): Promise<number[]> {
   }
 
   const text = await response.text();
-  const expTable: number[] = [];
+  // Initialize 6 empty arrays for the 6 growth curves
+  const expTables: number[][] = [[], [], [], [], [], []];
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Parse lines like "0 0 1 -54 1 0" or single numbers
-    // For now, we'll just take the first number on each line
-    // This represents the total experience for each level
+    // Parse lines like "0 0 1 -54 1 0"
+    // Each line represents a level, with 6 values for 6 different growth curves
     const parts = trimmed.split(/\s+/);
-    if (parts.length > 0) {
-      const exp = parseInt(parts[0]!, 10);
+    for (let i = 0; i < Math.min(parts.length, 6); i++) {
+      const exp = parseInt(parts[i]!, 10);
       if (!isNaN(exp)) {
-        expTable.push(exp);
+        expTables[i]!.push(exp);
       }
     }
   }
 
   // Cache the result
-  dataCache[gen].expTable = expTable;
-  return expTable;
+  dataCache[gen].expTables = expTables;
+  return expTables;
+}
+
+/**
+ * Load experience table for a specific growth curve
+ * @param gen Generation
+ * @param curve Growth curve index (0-5)
+ */
+export async function loadExpTable(gen: Generation, curve: GrowthCurve = 0): Promise<number[]> {
+  const tables = await loadExpTables(gen);
+  return tables[curve]!;
 }
 
 /**
  * Get level from experience points
+ * @param exp Experience points
+ * @param gen Generation
+ * @param curve Growth curve index (0-5), defaults to 0 (Medium Fast)
  */
 export async function getLevelFromExp(
   exp: number,
-  gen: Generation
+  gen: Generation,
+  curve: GrowthCurve = 0
 ): Promise<number> {
-  const expTable = await loadExpTable(gen);
+  const expTable = await loadExpTable(gen, curve);
   
   for (let level = 0; level < expTable.length; level++) {
     if (exp < expTable[level]!) {

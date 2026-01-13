@@ -7,6 +7,7 @@ import {
   decodePokemonText,
   loadPokemonNames,
   getPokemonName,
+  loadExpTables,
   loadExpTable,
   getLevelFromExp,
   clearDataCache,
@@ -270,31 +271,23 @@ describe('Data Loader', () => {
     });
   });
 
-  describe('loadExpTable', () => {
-    it('should load and parse experience table', async () => {
-      const mockData = '0 0 1 -54 1 0\n15 6 8 9 10 4\n52 21 27 57 33 13';
+  describe('loadExpTables', () => {
+    it('should load and parse all experience tables', async () => {
+      const mockData = '0 0 1 2 3 4\n15 6 8 9 10 11\n52 21 27 28 29 30';
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         text: async () => mockData,
       } as Response);
 
-      const expTable = await loadExpTable('Gen1');
+      const expTables = await loadExpTables('Gen1');
 
-      expect(expTable).toEqual([0, 15, 52]);
-    });
-
-    it('should cache loaded table', async () => {
-      const mockData = '0 0 1\n15 6 8';
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: true,
-        text: async () => mockData,
-      } as Response);
-
-      const table1 = await loadExpTable('Gen1');
-      const table2 = await loadExpTable('Gen1');
-
-      expect(table1).toBe(table2);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(expTables.length).toBe(6);
+      expect(expTables[0]).toEqual([0, 15, 52]);
+      expect(expTables[1]).toEqual([0, 6, 21]);
+      expect(expTables[2]).toEqual([1, 8, 27]);
+      expect(expTables[3]).toEqual([2, 9, 28]);
+      expect(expTables[4]).toEqual([3, 10, 29]);
+      expect(expTables[5]).toEqual([4, 11, 30]);
     });
 
     it('should throw on fetch failure', async () => {
@@ -303,11 +296,25 @@ describe('Data Loader', () => {
         statusText: 'Not Found',
       } as Response);
 
-      await expect(loadExpTable('Gen1')).rejects.toThrow('Failed to load pokemon_exp.txt');
+      await expect(loadExpTables('Gen1')).rejects.toThrow('Failed to load pokemon_exp.txt');
+    });
+  });
+
+  describe('loadExpTable', () => {
+    it('should load experience table for specific curve', async () => {
+      const mockData = '0 100 200 300 400 500\n15 115 215 315 415 515';
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: async () => mockData,
+      } as Response);
+
+      const table = await loadExpTable('Gen1', 2);
+
+      expect(table).toEqual([200, 215]);
     });
 
-    it('should skip empty lines', async () => {
-      const mockData = '0 0 1\n\n\n15 6 8\n';
+    it('should default to curve 0', async () => {
+      const mockData = '0 100 200 300 400 500\n15 115 215 315 415 515';
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         text: async () => mockData,
@@ -317,11 +324,25 @@ describe('Data Loader', () => {
 
       expect(table).toEqual([0, 15]);
     });
+
+    it('should cache loaded tables', async () => {
+      const mockData = '0 100\n15 115';
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: async () => mockData,
+      } as Response);
+
+      const table1 = await loadExpTable('Gen1');
+      const table2 = await loadExpTable('Gen1', 1);
+
+      // Both should use same cached data
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getLevelFromExp', () => {
     it('should get level from experience', async () => {
-      const mockData = '0\n15\n52\n122\n237';
+      const mockData = '0 100\n15 115\n52 152\n122 222\n237 337';
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         text: async () => mockData,
@@ -332,8 +353,20 @@ describe('Data Loader', () => {
       expect(level).toBe(3); // exp 100 is between 52 (level 2) and 122 (level 3)
     });
 
+    it('should support different growth curves', async () => {
+      const mockData = '0 100\n15 115\n52 152\n122 222';
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: async () => mockData,
+      } as Response);
+
+      const level = await getLevelFromExp(120, 'Gen1', 1);
+
+      expect(level).toBe(2); // exp 120 is between 115 (level 1) and 152 (level 2) for curve 1
+    });
+
     it('should return 0 for exp below first entry', async () => {
-      const mockData = '0\n15\n52';
+      const mockData = '0 100\n15 115\n52 152';
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         text: async () => mockData,
@@ -345,7 +378,7 @@ describe('Data Loader', () => {
     });
 
     it('should return max level for high exp', async () => {
-      const mockData = '0\n15\n52\n122';
+      const mockData = '0 100\n15 115\n52 152\n122 222';
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         text: async () => mockData,
