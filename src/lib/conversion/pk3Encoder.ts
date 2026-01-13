@@ -3,8 +3,7 @@
  * Creates valid pk3 binary data from VaultPokemon structure
  */
 
-import { encodePk3, type Pk3Data } from '../gen3/pk3/pk3.js';
-import { encryptAndShufflePk3 } from '../gen3/pk3/pk3.js';
+import { encodePk3, type Pk3Data, encryptPk3Data, shufflePk3Data, type Pk3Substructures } from '../gen3/pk3/pk3.js';
 import type { VaultPokemon, Gen3Pokemon } from '../types/index.js';
 import { encodeGen3String } from '../species/speciesTranscode.js';
 
@@ -32,20 +31,19 @@ export function encodePokemonToPk3(pokemon: VaultPokemon | Gen3Pokemon): ArrayBu
   const evsCondition = encodeEVsSubstructure(pokemon);
   const misc = encodeMiscSubstructure(pokemon);
 
-  // Combine substructures (unshuffled)
-  const unshuffled = new Uint8Array(48);
-  unshuffled.set(growth, 0);
-  unshuffled.set(attacks, 12);
-  unshuffled.set(evsCondition, 24);
-  unshuffled.set(misc, 36);
-
-  // Encrypt and shuffle the data
-  const encrypted = encryptAndShufflePk3({
+  // Create substructures object
+  const substructures: Pk3Substructures = {
     growth,
     attacks,
     evs: evsCondition,
     misc,
-  }, pokemon.personalityValue, pk3Data.otId);
+  };
+
+  // Shuffle the substructures based on personality value
+  const shuffled = shufflePk3Data(substructures, pokemon.personalityValue);
+  
+  // Encrypt the shuffled data
+  const encrypted = encryptPk3Data(shuffled, pokemon.personalityValue, pk3Data.otId);
 
   pk3Data.data = encrypted;
 
@@ -81,8 +79,11 @@ function encodeGrowthSubstructure(pokemon: VaultPokemon | Gen3Pokemon): Uint8Arr
   // PP Bonuses (8-bit) - packed as 2 bits per move
   let ppBonuses = 0;
   for (let i = 0; i < 4 && i < pokemon.moves.length; i++) {
-    const ppUps = pokemon.moves[i].ppUps || 0;
-    ppBonuses |= (ppUps & 0x3) << (i * 2);
+    const move = pokemon.moves[i];
+    if (move) {
+      const ppUps = move.ppUps || 0;
+      ppBonuses |= (ppUps & 0x3) << (i * 2);
+    }
   }
   view.setUint8(8, ppBonuses);
 
@@ -105,11 +106,12 @@ function encodeAttacksSubstructure(pokemon: VaultPokemon | Gen3Pokemon): Uint8Ar
 
   // Encode up to 4 moves
   for (let i = 0; i < 4; i++) {
-    if (i < pokemon.moves.length) {
+    const move = i < pokemon.moves.length ? pokemon.moves[i] : undefined;
+    if (move) {
       // Move ID (16-bit)
-      view.setUint16(i * 2, pokemon.moves[i].id, true);
+      view.setUint16(i * 2, move.id, true);
       // PP (8-bit)
-      view.setUint8(8 + i, pokemon.moves[i].pp);
+      view.setUint8(8 + i, move.pp);
     } else {
       // Empty move slot
       view.setUint16(i * 2, 0, true);
@@ -221,7 +223,7 @@ function packIVsEggAbility(pokemon: VaultPokemon | Gen3Pokemon): number {
 /**
  * Get game origin value based on source game
  */
-function getGameOriginValue(pokemon: VaultPokemon | Gen3Pokemon): number {
+function getGameOriginValue(_pokemon: VaultPokemon | Gen3Pokemon): number {
   // For converted Gen 1/2 Pokémon, we'll mark them as coming from the game they were converted from
   // but technically they're "from" the current Gen 3 game after conversion
   // Game origin codes: 1=Sapphire, 2=Ruby, 3=Emerald, 4=FireRed, 5=LeafGreen, 15=Event/Transfer
