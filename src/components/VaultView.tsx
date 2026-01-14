@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getAllPokemon, countPokemon, StoredPokemon, clearVault, deletePokemon, addPokemon } from '../lib/db/vaultDb';
 import { getSpeciesName } from '../lib/species/speciesTranscode';
-import { validateCheatCode, getAvailableEventCodes } from '../lib/events/eventPokemon';
-import { createEventStoredPokemon } from '../lib/events/eventGenerator';
+import { getEncounter, getAvailableEncounterCodes } from '../lib/events/encounterDatabase';
+import { generate } from '../lib/events/encounterGenerator';
 
 interface VaultViewProps {
   onSelectPokemon: (pokemon: StoredPokemon) => void;
@@ -489,7 +489,7 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
             fontWeight: 'bold',
             padding: '8px',
           }}>
-            📋 Available Event Codes ({getAvailableEventCodes().length})
+            📋 Available Event Codes ({getAvailableEncounterCodes().length})
           </summary>
           <div style={{
             marginTop: '12px',
@@ -499,8 +499,8 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
             maxHeight: '200px',
             overflowY: 'auto',
           }}>
-            {getAvailableEventCodes().map(code => {
-              const event = validateCheatCode(code);
+            {getAvailableEncounterCodes().map(code => {
+              const encounter = getEncounter(code);
               return (
                 <div key={code} style={{
                   padding: '8px',
@@ -513,7 +513,7 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
                     {code}
                   </span>
                   <br />
-                  <span style={{ color: '#666' }}>{event?.description}</span>
+                  <span style={{ color: '#666' }}>{encounter?.description}</span>
                 </div>
               );
             })}
@@ -529,19 +529,19 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
       return;
     }
 
-    const event = validateCheatCode(cheatCode);
-    if (!event) {
+    const encounter = getEncounter(cheatCode);
+    if (!encounter) {
       setCheatMessage({ text: `❌ Invalid code: "${cheatCode}". Check available codes below.`, type: 'error' });
       return;
     }
 
     try {
-      const storedPokemon = createEventStoredPokemon(event);
+      const storedPokemon = generate(encounter);
       await addPokemon(storedPokemon);
       await loadPokemon();
       setCheatCode('');
       setCheatMessage({ 
-        text: `✨ Success! ${event.nickname} (${event.description}) added to vault!`, 
+        text: `✨ Success! ${storedPokemon.nickname} (${encounter.description}) added to vault!`, 
         type: 'success' 
       });
       
