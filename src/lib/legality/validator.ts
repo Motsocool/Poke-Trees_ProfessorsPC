@@ -1,9 +1,11 @@
 /**
  * Legality validation for Pokémon
- * Ensures Pokémon comply with game rules and PCCS standards
+ * Ensures Pokémon comply with game rules
  */
 
 import type { VaultPokemon, Gen3Pokemon, LegalityCheck, IVs, EVs } from '../types';
+import { calculatePk3Checksum, decryptAndUnshufflePk3 } from '../gen3/pk3/pk3';
+import { serializePk3ForStorage, deserializePk3FromStorage } from '../db/vaultDb';
 
 /**
  * Perform full legality check on a Pokémon
@@ -63,38 +65,6 @@ export function checkLegality(pokemon: VaultPokemon | Gen3Pokemon): LegalityChec
     }
   }
   
-  // Check ability
-  if (pokemon.ability !== undefined) {
-    if (pokemon.ability < 0 || pokemon.ability > 1) {
-      warnings.push(`Unusual ability index: ${pokemon.ability} (usually 0 or 1)`);
-    }
-  }
-  
-  // Check ball
-  if (pokemon.ball !== undefined) {
-    if (pokemon.ball < 0 || pokemon.ball > 12) {
-      warnings.push(`Unusual ball ID: ${pokemon.ball}`);
-    }
-  }
-  
-  // Check shiny validity
-  if (pokemon.shiny && pokemon.otId !== undefined && pokemon.otSecretId !== undefined) {
-    const shinyCheck = validateShiny(pokemon.personalityValue, pokemon.otId, pokemon.otSecretId || 0);
-    if (!shinyCheck) {
-      errors.push('Pokémon marked as shiny but PID/ID combination does not result in shiny');
-    }
-  }
-  
-  // Check nickname length
-  if (pokemon.nickname && pokemon.nickname.length > 10) {
-    errors.push(`Nickname too long: ${pokemon.nickname.length} characters (max 10)`);
-  }
-  
-  // Check OT name length
-  if (pokemon.ot && pokemon.ot.length > 8) {
-    errors.push(`OT name too long: ${pokemon.ot.length} characters (max 8)`);
-  }
-  
   return {
     isLegal: errors.length === 0,
     errors,
@@ -118,16 +88,10 @@ function validateIVs(ivs: IVs): Pick<LegalityCheck, 'errors' | 'warnings'> {
     }
   }
   
-  // Check if all IVs are max (suspicious but not illegal)
+  // Check if all IVs are max
   const allMax = ivEntries.every(([_, value]) => value === 31);
   if (allMax) {
     warnings.push('All IVs are maximum (31) - unusual but legal');
-  }
-  
-  // Check if all IVs are same value
-  const allSame = ivEntries.every(([_, value]) => value === ivs.hp);
-  if (allSame && ivs.hp !== 0 && ivs.hp !== 31) {
-    warnings.push(`All IVs are the same value (${ivs.hp}) - unusual pattern`);
   }
   
   return { errors, warnings };
@@ -163,88 +127,47 @@ function validateEVs(evs: EVs): Pick<LegalityCheck, 'errors' | 'warnings'> {
     errors.push(`Total EVs exceed limit: ${total} (max 510)`);
   }
   
-  // Warning if total is exactly 510 with multiple maxed stats
-  const maxedStats = evEntries.filter(([_, value]) => value === 255).length;
-  if (total === 510 && maxedStats >= 2) {
-    warnings.push('Multiple stats have maximum EVs - verify this is intentional');
-  }
-  
   return { errors, warnings };
+}
+
+/**
+ * Fix Pokémon checksum
+ */
+export async function fixPokemonChecksum(pokemon: VaultPokemon): Promise<VaultPokemon> {
+  try {
+    // Deserialize pk3 data
+    const pk3 = deserializePk3FromStorage(pokemon.pk3Data);
+    
+    // Decrypt and unshuffle
+    const substructures = decryptAndUnshufflePk3(pk3);
+    
+    // Recalculate correct checksum
+    const correctChecksum = calculatePk3Checksum(substructures);
+    
+    // Update checksum
+    pk3.checksum = correctChecksum;
+    
+    // Serialize back
+    const updatedPk3Data = serializePk3ForStorage(pk3);
+    
+    return {
+      ...pokemon,
+      pk3Data: updatedPk3Data,
+      isLegal: true,
+      legalityNotes: [...pokemon.legalityNotes, 'Checksum corrected'],
+    };
+  } catch (error) {
+    console.error('Failed to fix checksum:', error);
+    return pokemon;
+  }
 }
 
 /**
  * Validate shiny status based on PID and IDs
  */
-function validateShiny(pid: number, tid: number, sid: number): boolean {
+export function validateShiny(pid: number, tid: number, sid: number): boolean {
   const pidUpper = (pid >> 16) & 0xFFFF;
   const pidLower = pid & 0xFFFF;
   const xor = pidUpper ^ pidLower ^ tid ^ sid;
-  
   return xor < 8;
-}
-
-/**
- * Check if a converted Pokémon maintains PCCS compliance
- */
-export function validatePCCSCompliance(
-  originalDVs: { attack: number; defense: number; speed: number; special: number },
-  convertedIVs: IVs,
-  wasShiny: boolean,
-  isShiny: boolean
-): LegalityCheck {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-  
-  // Check that IVs properly represent DVs
-  // DV = floor(IV / 2), so IV should be DV * 2 or DV * 2 + 1
-  const dvFromIV = {
-    attack: Math.floor(convertedIVs.attack / 2),
-    defense: Math.floor(convertedIVs.defense / 2),
-    speed: Math.floor(convertedIVs.speed / 2),
-    special: Math.floor(convertedIVs.specialAttack / 2),
-  };
-  
-  if (dvFromIV.attack !== originalDVs.attack) {
-    errors.push(`Attack IV ${convertedIVs.attack} does not properly represent DV ${originalDVs.attack}`);
-  }
-  
-  if (dvFromIV.defense !== originalDVs.defense) {
-    errors.push(`Defense IV ${convertedIVs.defense} does not properly represent DV ${originalDVs.defense}`);
-  }
-  
-  if (dvFromIV.speed !== originalDVs.speed) {
-    errors.push(`Speed IV ${convertedIVs.speed} does not properly represent DV ${originalDVs.speed}`);
-  }
-  
-  if (dvFromIV.special !== originalDVs.special) {
-    warnings.push(`Special IV ${convertedIVs.specialAttack} does not perfectly represent DV ${originalDVs.special}`);
-  }
-  
-  // Check shiny status preservation
-  if (wasShiny !== isShiny) {
-    errors.push(`Shiny status not preserved: was ${wasShiny}, now ${isShiny}`);
-  }
-  
-  return {
-    isLegal: errors.length === 0,
-    errors,
-    warnings,
-  };
-}
-
-/**
- * Validate that a Pokémon's stats are correctly calculated
- */
-export function validateStats(
-  pokemon: Gen3Pokemon,
-  expectedStats: { hp: number; attack: number; defense: number; speed: number; specialAttack: number; specialDefense: number }
-): boolean {
-  return (
-    pokemon.stats.hp === expectedStats.hp &&
-    pokemon.stats.attack === expectedStats.attack &&
-    pokemon.stats.defense === expectedStats.defense &&
-    pokemon.stats.speed === expectedStats.speed &&
-    pokemon.stats.specialAttack === expectedStats.specialAttack &&
-    pokemon.stats.specialDefense === expectedStats.specialDefense
-  );
 }

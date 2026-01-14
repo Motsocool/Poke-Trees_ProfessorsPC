@@ -46,7 +46,7 @@ export interface Stats {
 
 // DVs (Determinant Values) for Gen 1/2
 export interface DVs {
-  hp: number; // Derived from other DVs in Gen 1/2
+  hp: number;
   attack: number;
   defense: number;
   speed: number;
@@ -86,15 +86,15 @@ export interface BasePokemon {
   species: number;
   level: number;
   nickname: string;
-  ot: string; // Original Trainer
-  otId: number; // Trainer ID
+  ot: string;
+  otId: number;
   exp: number;
-  friendship?: number; // Gen 2+
+  friendship?: number;
   moves: Move[];
-  gender?: 'M' | 'F' | 'U'; // Unknown for genderless
+  gender?: 'M' | 'F' | 'U';
   shiny: boolean;
-  nature?: number; // Gen 3+
-  ability?: number; // Gen 3+
+  nature?: number;
+  ability?: number;
   statusCondition: StatusCondition;
   currentHP: number;
   stats: Stats;
@@ -110,8 +110,8 @@ export interface Gen12Pokemon extends BasePokemon {
 export interface Gen3Pokemon extends BasePokemon {
   ivs: IVs;
   evs: EVs;
-  personalityValue: number; // PID
-  otSecretId?: number; // Secret ID (Gen 3+)
+  personalityValue: number;
+  otSecretId?: number;
   ball: number;
   metLevel?: number;
   metLocation?: number;
@@ -119,14 +119,15 @@ export interface Gen3Pokemon extends BasePokemon {
   markings?: number;
 }
 
-// Unified vault Pokémon (converted to Gen 3 format)
+// Unified vault Pokémon
 export interface VaultPokemon extends Gen3Pokemon {
-  id: string; // UUID
+  id: string;
   sourceGeneration: Generation;
   sourceGame: GameVersion;
   importDate: Date;
   isLegal: boolean;
   legalityNotes: string[];
+  pk3Data: ArrayBuffer; // Serialized pk3 for storage
 }
 
 // Save file metadata
@@ -143,7 +144,7 @@ export interface SaveFileMetadata {
 // Box data
 export interface Box {
   name: string;
-  pokemon: (BasePokemon | null)[]; // null for empty slots
+  pokemon: (BasePokemon | null)[];
 }
 
 // Parsed save file

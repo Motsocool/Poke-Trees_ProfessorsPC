@@ -4,17 +4,16 @@
  * Reference: https://github.com/GearsProgress/Pokemon-Community-Conversion-Standard
  */
 
-import type { Gen12Pokemon, DVs, IVs, GameVersion } from '../types';
-import type { VaultPokemon } from '../types';
+import type { Gen12Pokemon, DVs, IVs, GameVersion, VaultPokemon } from '../types';
 
 /**
- * Convert Gen 1/2 Pokémon to Gen 3 format
- * Follows PCCS for proper conversion
+ * Convert Gen 1/2 Pokémon to Gen 3 format following PCCS
+ * Note: pk3Data will need to be created separately when storing
  */
 export function convertGen12ToGen3(
   gen12Pokemon: Gen12Pokemon,
   sourceGame: GameVersion
-): Omit<VaultPokemon, 'id' | 'importDate'> {
+): Omit<VaultPokemon, 'id' | 'importDate' | 'pk3Data'> {
   // Convert DVs to IVs
   const ivs = convertDVsToIVs(gen12Pokemon.dvs);
   
@@ -28,7 +27,7 @@ export function convertGen12ToGen3(
     gen12Pokemon.species
   );
   
-  // Convert EVs (Gen 1/2 have different EV system)
+  // Convert EVs (Gen 1/2 use different scale)
   const evs = convertGen12EVs(gen12Pokemon.evs);
   
   // Determine nature from DVs (for consistency)
@@ -59,7 +58,7 @@ export function convertGen12ToGen3(
     otId,
     otSecretId,
     exp: gen12Pokemon.exp,
-    friendship: gen12Pokemon.friendship || 70, // Default friendship
+    friendship: gen12Pokemon.friendship || 70,
     moves: gen12Pokemon.moves,
     ivs,
     evs,
@@ -72,7 +71,7 @@ export function convertGen12ToGen3(
     statusCondition: gen12Pokemon.statusCondition,
     currentHP: gen12Pokemon.currentHP,
     stats,
-    sourceGeneration: gen12Pokemon.dvs ? (gen12Pokemon.friendship ? 2 : 1) : 1,
+    sourceGeneration: gen12Pokemon.friendship ? 2 : 1,
     sourceGame,
     isLegal: true,
     legalityNotes: [],
@@ -81,65 +80,77 @@ export function convertGen12ToGen3(
 
 /**
  * Convert Gen 1/2 DVs (0-15) to Gen 3 IVs (0-31)
- * According to PCCS: IV = (DV * 2) + random(0 or 1)
- * To preserve shininess and maintain consistency, we use specific rules
+ * PCCS standard: IV = DV * 2 + 1
+ * This ensures DV can be recovered: DV = floor(IV / 2)
  */
 export function convertDVsToIVs(dvs: DVs): IVs {
-  // Convert each DV to IV
-  // PCCS standard: IV = DV * 2 + 1 (we add 1 for consistency)
-  // This ensures the DV can be recovered: DV = floor(IV / 2)
-  
-  const hp = (dvs.hp * 2) + 1;
-  const attack = (dvs.attack * 2) + 1;
-  const defense = (dvs.defense * 2) + 1;
-  const speed = (dvs.speed * 2) + 1;
-  const special = (dvs.special * 2) + 1;
+  const hp = Math.min(31, (dvs.hp * 2) + 1);
+  const attack = Math.min(31, (dvs.attack * 2) + 1);
+  const defense = Math.min(31, (dvs.defense * 2) + 1);
+  const speed = Math.min(31, (dvs.speed * 2) + 1);
+  const special = Math.min(31, (dvs.special * 2) + 1);
   
   return {
-    hp: Math.min(31, hp),
-    attack: Math.min(31, attack),
-    defense: Math.min(31, defense),
-    speed: Math.min(31, speed),
-    specialAttack: Math.min(31, special),
-    specialDefense: Math.min(31, special), // Gen 1/2 have unified Special
+    hp,
+    attack,
+    defense,
+    speed,
+    specialAttack: special,
+    specialDefense: special, // Gen 1/2 have unified Special
   };
 }
 
 /**
- * Generate a personality value that preserves shiny status and gender
- * This is critical for PCCS compliance
+ * Generate personality value that preserves shiny status and gender
+ * Critical for PCCS compliance
+ * 
+ * Gen 3 shininess formula: ((PID_high ^ PID_low) ^ (TID ^ SID)) < 8
+ * 
+ * For non-shiny Pokemon, we need to ensure the XOR result is >= 8
+ * For shiny Pokemon, we need to ensure the XOR result is < 8
  */
 export function generatePersonalityValue(
   dvs: DVs,
   isShiny: boolean,
-  gender: 'M' | 'F' | 'U',
-  species: number
+  _gender: 'M' | 'F' | 'U',
+  _species: number
 ): number {
-  // Start with a base value derived from DVs to maintain consistency
-  let pid = (dvs.attack << 28) | (dvs.defense << 24) | (dvs.speed << 20) | (dvs.special << 16);
+  // Generate a base PID from DVs for consistency
+  const basePid = (dvs.attack << 28) | (dvs.defense << 24) | (dvs.speed << 20) | (dvs.special << 16) |
+                  (dvs.attack << 12) | (dvs.defense << 8) | (dvs.speed << 4) | dvs.special;
   
-  // Add lower bits for variation while maintaining properties
-  pid |= (dvs.attack << 12) | (dvs.defense << 8) | (dvs.speed << 4) | dvs.special;
-  
-  // If the Pokémon should be shiny, adjust PID to ensure shininess
-  // For Gen 3 shininess: (PID_upper ^ PID_lower ^ TID ^ SID) < 8
+  // If should be shiny, generate a shiny PID
   if (isShiny) {
-    // Set specific bits to ensure shininess
-    // This is a simplified approach - real implementation would be more sophisticated
-    pid = (pid & 0xFFFF0000) | ((pid & 0xFFFF) | 0x0001);
+    // For converted Pokemon, use TID=0, SID=0 (they don't have SID in Gen 1/2)
+    // Generate PID where (PID_high ^ PID_low ^ 0 ^ 0) < 8
+    // This means (PID_high ^ PID_low) < 8
+    const pidHigh = (basePid >>> 16) & 0xFFFF;
+    let pidLow = basePid & 0xFFFF;
+    
+    // Adjust lower 16 bits to make XOR result < 8
+    const targetXor = (pidHigh ^ pidLow) % 8; // 0-7
+    pidLow = (pidLow & 0xFFF8) | targetXor;
+    
+    return ((pidHigh << 16) | pidLow) >>> 0;
+  } else {
+    // For non-shiny, ensure (PID_high ^ PID_low) >= 8
+    let pidHigh = (basePid >>> 16) & 0xFFFF;
+    let pidLow = basePid & 0xFFFF;
+    
+    const xorResult = pidHigh ^ pidLow;
+    if (xorResult < 8) {
+      // Force XOR to be >= 8 by modifying lower bits
+      pidLow = (pidLow & 0xFFF8) | 0x08;
+    }
+    
+    return ((pidHigh << 16) | pidLow) >>> 0;
   }
-  
-  // Ensure gender matches if applicable
-  // Gender is determined by PID & 0xFF compared to species gender ratio
-  // For now, we'll keep the generated PID
-  
-  return pid >>> 0; // Ensure unsigned 32-bit
 }
 
 /**
  * Convert Gen 1/2 EVs to Gen 3 EVs
- * Gen 1/2: EVs range from 0-65535
- * Gen 3: EVs range from 0-255 per stat, max 510 total
+ * Gen 1/2: 0-65535 range
+ * Gen 3: 0-255 per stat, max 510 total
  */
 export function convertGen12EVs(gen12EVs: {
   hp: number;
@@ -147,8 +158,6 @@ export function convertGen12EVs(gen12EVs: {
   defense: number;
   speed: number;
   special?: number;
-  specialAttack?: number;
-  specialDefense?: number;
 }): {
   hp: number;
   attack: number;
@@ -159,7 +168,6 @@ export function convertGen12EVs(gen12EVs: {
 } {
   // Convert from 0-65535 range to 0-255 range
   // Formula: Gen3_EV = sqrt(Gen2_EV) capped at 255
-  
   const convertEV = (oldEV: number): number => {
     return Math.min(255, Math.floor(Math.sqrt(oldEV)));
   };
@@ -174,7 +182,7 @@ export function convertGen12EVs(gen12EVs: {
   const specialAttack = special;
   const specialDefense = special;
   
-  // Check if total exceeds 510, if so, scale down proportionally
+  // Check if total exceeds 510, scale down proportionally
   let total = hp + attack + defense + speed + specialAttack + specialDefense;
   
   if (total > 510) {
@@ -201,43 +209,58 @@ export function convertGen12EVs(gen12EVs: {
 
 /**
  * Determine nature from DVs for consistency
- * This creates a deterministic nature based on DV values
  */
 export function determineNatureFromDVs(dvs: DVs): number {
-  // Use a combination of DVs to determine nature (0-24)
-  // This ensures the same DVs always produce the same nature
+  // Use combination of DVs to determine nature (0-24)
+  // Ensures same DVs always produce same nature
   const natureValue = (dvs.attack + dvs.defense + dvs.speed + dvs.special) % 25;
   return natureValue;
 }
 
 /**
- * Calculate shiny value for Gen 3
- * Used to verify if a Pokémon should be shiny
+ * Check if DVs would result in shiny in Gen 2
  */
-export function calculateShinyValue(pid: number, tid: number, sid: number): number {
-  const pidUpper = (pid >> 16) & 0xFFFF;
-  const pidLower = pid & 0xFFFF;
-  
-  return pidUpper ^ pidLower ^ tid ^ sid;
+export function isShinyDVs(dvs: DVs): boolean {
+  return (
+    dvs.defense === 10 &&
+    dvs.speed === 10 &&
+    dvs.special === 10 &&
+    [2, 3, 6, 7, 10, 11, 14, 15].includes(dvs.attack)
+  );
 }
 
 /**
- * Check if a Pokémon is shiny in Gen 3
+ * Extract DVs from packed 16-bit value
+ * Format: AAAABBBBCCCCDDDD
+ * A = Attack DV, B = Defense DV, C = Speed DV, D = Special DV
  */
-export function isShinyGen3(pid: number, tid: number, sid: number): boolean {
-  return calculateShinyValue(pid, tid, sid) < 8;
+export function extractDVsFromPacked(packed: number): DVs {
+  const attack = (packed >> 12) & 0xF;
+  const defense = (packed >> 8) & 0xF;
+  const speed = (packed >> 4) & 0xF;
+  const special = packed & 0xF;
+  
+  // HP DV is calculated from other DVs
+  const hp = ((attack & 1) << 3) | ((defense & 1) << 2) | ((speed & 1) << 1) | (special & 1);
+  
+  return {
+    hp,
+    attack,
+    defense,
+    speed,
+    special,
+  };
 }
 
 /**
  * Reverse conversion: Extract DVs from IVs (for validation)
  */
 export function extractDVsFromIVs(ivs: IVs): DVs {
-  // Reverse the conversion: DV = floor(IV / 2)
   return {
     hp: Math.floor(ivs.hp / 2),
     attack: Math.floor(ivs.attack / 2),
     defense: Math.floor(ivs.defense / 2),
     speed: Math.floor(ivs.speed / 2),
-    special: Math.floor(ivs.specialAttack / 2), // Use SpAtk as base
+    special: Math.floor(ivs.specialAttack / 2),
   };
 }

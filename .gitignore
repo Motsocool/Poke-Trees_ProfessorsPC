@@ -23,13 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Test coverage
-coverage
-.nyc_output
-
-# Build artifacts
-build
-.cache
-
-# PWA assets
-dev-dist
+# Keep useful_data directory structure but not binary files
+useful_data/**/*.bin
+useful_data/**/*.sav
