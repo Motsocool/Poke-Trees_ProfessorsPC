@@ -17,12 +17,14 @@ export enum GrowthRate {
 }
 
 /**
- * Experience table for levels 2-100
- * Each row represents a level, each column represents a growth rate
- * Loaded from pokemon_exp.txt
+ * Experience table for levels 1-100
+ * Each row represents a level (index 0 = level 1, index 99 = level 100)
+ * Each column represents a growth rate (0-5)
+ * Row 0 (level 1) is always 0 exp for all growth rates
+ * Loaded from pokemon_exp.txt which contains levels 2-100
  */
 const EXP_TABLE: number[][] = [
-  [0, 0, 1, 0, 1, 0], // Level 1 (placeholder, not used)
+  [0, 0, 0, 0, 0, 0], // Level 1 - always 0 exp
   [15, 6, 8, 9, 10, 4],
   [52, 21, 27, 57, 33, 13],
   [122, 51, 64, 96, 80, 32],
@@ -179,9 +181,10 @@ export function calculateLevelFromExp(species: number, exp: number): number {
 
 /**
  * Calculate level from experience for a specific growth rate
+ * Uses linear search through exp table
  */
 function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
-  // Binary search through the exp table for this growth rate
+  // Linear search through the exp table for this growth rate
   for (let level = 1; level <= 100; level++) {
     const requiredExp = getExpForLevel(level, growthRate);
     if (exp < requiredExp) {
@@ -197,8 +200,9 @@ function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
  */
 function getExpForLevel(level: number, growthRate: number): number {
   if (level <= 1) return 0;
-  if (level > 100) return EXP_TABLE[98][growthRate]; // Max exp for level 100
+  if (level > 100) return EXP_TABLE[99][growthRate]; // Max exp for level 100 (index 99)
   
+  // Level N is at index N-1 (level 1 at index 0, level 100 at index 99)
   return EXP_TABLE[level - 1][growthRate];
 }
 
