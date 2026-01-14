@@ -5,6 +5,7 @@
 
 import { calcGen3HP, calcGen3Stat, applyNatureModifier } from './statCalculations';
 import { getBaseStats } from './baseStats';
+import { calculateLevelFromExp } from './experienceCalculations';
 import {
   GEN3_SAVE_SIZE,
   GEN3_SAVE_SLOT_SIZE,
@@ -393,15 +394,7 @@ function determineGen3Gender(species: number, personality: number): 'M' | 'F' | 
   return 'U';
 }
 
-/**
- * Calculate level from experience (placeholder)
- */
-function calculateLevelFromExp(species: number, exp: number): number {
-  // Would need experience curve lookup
-  // Placeholder: assume medium-fast growth
-  if (exp === 0) return 1;
-  return Math.min(100, Math.floor(Math.pow(exp / 1000000, 1/3) * 100) + 1);
-}
+// calculateLevelFromExp is now imported from experienceCalculations.ts
 
 /**
  * Calculate Gen 3 stats with nature modifiers
