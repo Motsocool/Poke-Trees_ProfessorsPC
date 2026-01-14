@@ -128,10 +128,6 @@ export function applyNatureModifier(stat: number, nature: number, statKey: Gen3S
   }
 
   const effect = NATURE_EFFECTS[nature];
-  
-  if (!effect) {
-    return stat;
-  }
 
   if (effect.plus === statKey) {
     return Math.floor(stat * 1.1);

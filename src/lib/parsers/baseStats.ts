@@ -72,7 +72,9 @@ export function getBaseStats(species: number): BaseStats {
   }
   
   // Default stats for unknown species
-  // Using reasonable middle-ground values
+  // Using 60 for all stats as a reasonable middle-ground value
+  // This is slightly above the average of fully evolved Pokemon (~55-65 per stat)
+  // and prevents unrealistic extremes while maintaining gameplay balance
   return {
     hp: 60,
     attack: 60,
