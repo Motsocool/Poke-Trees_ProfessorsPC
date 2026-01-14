@@ -5,6 +5,7 @@
 
 import { calcGen2HP, calcGen2Stat } from './statCalculations';
 import { getBaseStats } from './baseStats';
+import { determineGen2Gender } from './genderDetermination';
 import {
   GEN2_SAVE_SIZE,
   GEN2_CHECKSUM_OFFSET,
@@ -218,8 +219,8 @@ function parseGen2Pokemon(
   // Determine if shiny
   const shiny = isGen2Shiny(dvs);
 
-  // Determine gender from Attack DV (simplified)
-  const gender = dvs.attack >= 8 ? 'M' : 'F';
+  // Determine gender from Attack DV using proper species-specific ratios
+  const gender = determineGen2Gender(species, dvs.attack);
 
   // Calculate stats using proper Gen 2 formulas
   // Note: Gen 2 has SpAtk and SpDef, but uses one Special DV for both

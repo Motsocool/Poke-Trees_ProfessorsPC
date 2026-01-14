@@ -6,6 +6,7 @@
 import { calcGen3HP, calcGen3Stat, applyNatureModifier } from './statCalculations';
 import { getBaseStats } from './baseStats';
 import { calculateLevelFromExp } from './experienceCalculations';
+import { determineGen3Gender } from './genderDetermination';
 import {
   GEN3_SAVE_SIZE,
   GEN3_SAVE_SLOT_SIZE,
@@ -299,7 +300,7 @@ function parseGen3Pokemon(data: Uint8Array): Gen3Pokemon {
   // Calculate stats with nature modifiers
   const stats = calculateGen3Stats(species, level, ivs, evs, nature);
   
-  // Determine gender
+  // Determine gender using proper species-specific ratios
   const gender = determineGen3Gender(species, personalityValue);
   
   // Determine if shiny
@@ -377,22 +378,7 @@ function isGen3Shiny(personality: number, otId: number): boolean {
   return xor < GEN3_SHINY_THRESHOLD;
 }
 
-/**
- * Determine gender (simplified)
- */
-function determineGen3Gender(species: number, personality: number): 'M' | 'F' | 'U' {
-  // Would need species gender ratio lookup
-  const genderByte = personality & 0xFF;
-  
-  // Simplified
-  if (genderByte < 127) {
-    return 'F';
-  } else if (genderByte < 255) {
-    return 'M';
-  }
-  
-  return 'U';
-}
+// determineGen3Gender is now imported from genderDetermination.ts
 
 // calculateLevelFromExp is now imported from experienceCalculations.ts
 
