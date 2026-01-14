@@ -3,6 +3,8 @@
  * Parses 32KB save files and extracts boxed Pokémon with DVs
  */
 
+import { calcGen2HP, calcGen2Stat } from './statCalculations';
+import { getBaseStats } from './baseStats';
 import {
   GEN2_SAVE_SIZE,
   GEN2_CHECKSUM_OFFSET,
@@ -219,13 +221,16 @@ function parseGen2Pokemon(
   // Determine gender from Attack DV (simplified)
   const gender = dvs.attack >= 8 ? 'M' : 'F';
 
-  // Calculate stats (placeholder)
+  // Calculate stats using proper Gen 2 formulas
+  // Note: Gen 2 has SpAtk and SpDef, but uses one Special DV for both
+  const baseStats = getBaseStats(species);
+  const spDv = dvs.special; // One DV used for both SpAtk and SpDef
   const stats = {
-    hp: 100,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    special: 50,
+    hp: calcGen2HP(baseStats.hp, dvs.hp, evs.hp, level),
+    attack: calcGen2Stat(baseStats.attack, dvs.attack, evs.attack, level),
+    defense: calcGen2Stat(baseStats.defense, dvs.defense, evs.defense, level),
+    speed: calcGen2Stat(baseStats.speed, dvs.speed, evs.speed, level),
+    special: calcGen2Stat(baseStats.specialAttack, spDv, evs.special, level),
   };
 
   return {

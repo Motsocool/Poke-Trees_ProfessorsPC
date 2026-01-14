@@ -3,6 +3,8 @@
  * Based on: https://github.com/pret/pokeemerald
  */
 
+import { calcGen3HP, calcGen3Stat, applyNatureModifier } from './statCalculations';
+import { getBaseStats } from './baseStats';
 import {
   GEN3_SAVE_SIZE,
   GEN3_SAVE_SLOT_SIZE,
@@ -290,11 +292,11 @@ function parseGen3Pokemon(data: Uint8Array): Gen3Pokemon {
   // Calculate level from experience
   const level = calculateLevelFromExp(species, exp);
   
-  // Calculate stats
-  const stats = calculateGen3Stats(species, level, ivs, evs);
-  
   // Determine nature
   const nature = personalityValue % 25;
+  
+  // Calculate stats with nature modifiers
+  const stats = calculateGen3Stats(species, level, ivs, evs, nature);
   
   // Determine gender
   const gender = determineGen3Gender(species, personalityValue);
@@ -402,16 +404,26 @@ function calculateLevelFromExp(species: number, exp: number): number {
 }
 
 /**
- * Calculate Gen 3 stats
+ * Calculate Gen 3 stats with nature modifiers
  */
-function calculateGen3Stats(species: number, level: number, ivs: IVs, evs: EVs): Stats {
-  // Placeholder - would need base stats lookup
+function calculateGen3Stats(species: number, level: number, ivs: IVs, evs: EVs, nature: number): Stats {
+  const baseStats = getBaseStats(species);
+  
+  // Calculate base stats before nature
+  const hp = calcGen3HP(baseStats.hp, ivs.hp, evs.hp, level);
+  const attack = calcGen3Stat(baseStats.attack, ivs.attack, evs.attack, level);
+  const defense = calcGen3Stat(baseStats.defense, ivs.defense, evs.defense, level);
+  const speed = calcGen3Stat(baseStats.speed, ivs.speed, evs.speed, level);
+  const specialAttack = calcGen3Stat(baseStats.specialAttack, ivs.specialAttack, evs.specialAttack, level);
+  const specialDefense = calcGen3Stat(baseStats.specialDefense, ivs.specialDefense, evs.specialDefense, level);
+  
+  // Apply nature modifiers (HP is never affected by nature)
   return {
-    hp: 100,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    specialAttack: 50,
-    specialDefense: 50,
+    hp,
+    attack: applyNatureModifier(attack, nature, 'attack'),
+    defense: applyNatureModifier(defense, nature, 'defense'),
+    speed: applyNatureModifier(speed, nature, 'speed'),
+    specialAttack: applyNatureModifier(specialAttack, nature, 'specialAttack'),
+    specialDefense: applyNatureModifier(specialDefense, nature, 'specialDefense'),
   };
 }

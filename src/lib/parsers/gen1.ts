@@ -3,6 +3,8 @@
  * Parses 32KB save files and extracts boxed Pokémon with DVs
  */
 
+import { calcGen1HP, calcGen1Stat } from './statCalculations';
+import { getBaseStats } from './baseStats';
 import {
   GEN1_SAVE_SIZE,
   GEN1_CHECKSUM_OFFSET,
@@ -193,13 +195,14 @@ function parseGen1Pokemon(
   // Check if would be shiny in Gen 2
   const shiny = isGen1ShinyDVs(dvs);
 
-  // Calculate stats (placeholder - would need base stats table)
+  // Calculate stats using proper Gen 1 formulas
+  const baseStats = getBaseStats(species);
   const stats = {
-    hp: currentHP,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    special: 50,
+    hp: calcGen1HP(baseStats.hp, dvs.hp, evs.hp, level),
+    attack: calcGen1Stat(baseStats.attack, dvs.attack, evs.attack, level),
+    defense: calcGen1Stat(baseStats.defense, dvs.defense, evs.defense, level),
+    speed: calcGen1Stat(baseStats.speed, dvs.speed, evs.speed, level),
+    special: calcGen1Stat(baseStats.specialAttack, dvs.special, evs.special, level),
   };
 
   return {
