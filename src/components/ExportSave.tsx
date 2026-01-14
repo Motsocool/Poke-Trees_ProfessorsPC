@@ -6,6 +6,9 @@ import { injectPokemonToGen3Save, findEmptySlots, validateInjectionTarget, type 
 import type { StoredPokemon } from '../lib/db/vaultDb';
 import { decodePk3 } from '../lib/gen3/pk3/pk3';
 
+// Delay before cleaning up download link to ensure download starts
+const DOWNLOAD_CLEANUP_DELAY_MS = 100;
+
 interface ExportSaveProps {
   vaultPokemon: StoredPokemon[];
 }
@@ -113,9 +116,9 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
         setTimeout(() => {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-        }, 100);
+        }, DOWNLOAD_CLEANUP_DELAY_MS);
 
-        setStatus(`✅ Successfully injected ${selectedPokemon.length} Pokémon! Download should start as "${downloadName}". If download didn't start, check your browser's download settings.`);
+        setStatus(`✅ Successfully injected ${selectedPokemon.length} Pokémon! Download started: "${downloadName}"`);
         setError(null);
       } catch (downloadErr) {
         console.error('Download error:', downloadErr);
@@ -239,6 +242,12 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       {error && (
         <div className="error-message">
           ⚠️ {error}
+        </div>
+      )}
+
+      {status && status.includes('Download started') && (
+        <div className="download-help">
+          <p><small>💡 If the download didn't start, check your browser's download settings or pop-up blocker.</small></p>
         </div>
       )}
 
