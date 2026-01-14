@@ -7,6 +7,7 @@ import { calcGen3HP, calcGen3Stat, applyNatureModifier } from './statCalculation
 import { getBaseStats } from './baseStats';
 import { calculateLevelFromExp } from './experienceCalculations';
 import { determineGen3Gender } from './genderDetermination';
+import { detectGen3Version } from './versionDetection';
 import {
   GEN3_SAVE_SIZE,
   GEN3_SAVE_SLOT_SIZE,
@@ -91,7 +92,7 @@ export function parseGen3Save(buffer: Uint8Array): ParsedSaveFile {
     throw new Error('Trainer info section not found');
   }
 
-  const metadata = parseTrainerInfo(trainerSection.data);
+  const metadata = parseTrainerInfo(trainerSection.data, buffer);
 
   // Parse PC boxes from Sections 5-13
   const boxes = parsePCBoxes(sections);
@@ -156,13 +157,13 @@ function validateSections(sections: Section[]): void {
 /**
  * Parse trainer info from Section 0
  */
-function parseTrainerInfo(data: Uint8Array): SaveFileMetadata {
+function parseTrainerInfo(data: Uint8Array, fullSaveBuffer: Uint8Array): SaveFileMetadata {
   const trainerName = decodeGen3String(data, 0, GEN3_PLAYER_NAME_LENGTH);
   const trainerId = readU16LE(data, 0x0A);
   const secretId = readU16LE(data, 0x0C);
   
-  // Detect game version (would need more logic)
-  const gameVersion = GameVersion.EMERALD;
+  // Detect game version using full save buffer for accurate detection
+  const gameVersion = detectGen3Version(fullSaveBuffer);
 
   return {
     game: gameVersion,

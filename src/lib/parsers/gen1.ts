@@ -5,6 +5,7 @@
 
 import { calcGen1HP, calcGen1Stat } from './statCalculations';
 import { getBaseStats } from './baseStats';
+import { detectGen1Version } from './versionDetection';
 import {
   GEN1_SAVE_SIZE,
   GEN1_CHECKSUM_OFFSET,
@@ -54,8 +55,9 @@ export function parseGen1Save(buffer: ArrayBuffer): ParsedSaveFile {
   const trainerName = decodeGen12String(view, GEN1_PLAYER_NAME_OFFSET, GEN1_PLAYER_NAME_LENGTH);
   const trainerId = view.getUint16(GEN1_PLAYER_ID_OFFSET, true);
 
-  // Determine game version (simplified - Yellow has different offsets)
-  const gameVersion = GameVersion.RED;
+  // Determine game version using detection logic
+  const uint8Buffer = new Uint8Array(buffer);
+  const gameVersion = detectGen1Version(uint8Buffer);
 
   // Parse boxes
   const currentBoxNum = view.getUint8(GEN1_CURRENT_BOX_OFFSET);

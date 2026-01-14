@@ -6,6 +6,7 @@
 import { calcGen2HP, calcGen2Stat } from './statCalculations';
 import { getBaseStats } from './baseStats';
 import { determineGen2Gender } from './genderDetermination';
+import { detectGen2Version } from './versionDetection';
 import {
   GEN2_SAVE_SIZE,
   GEN2_CHECKSUM_OFFSET,
@@ -61,8 +62,9 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
   const trainerName = decodeGen12String(view, GEN2_PLAYER_NAME_OFFSET, GEN2_PLAYER_NAME_LENGTH);
   const trainerId = view.getUint16(GEN2_PLAYER_ID_OFFSET, true);
 
-  // Determine game version (simplified)
-  const gameVersion = GameVersion.CRYSTAL;
+  // Determine game version using detection logic
+  const uint8Buffer = new Uint8Array(buffer);
+  const gameVersion = detectGen2Version(uint8Buffer);
 
   // Parse boxes
   const currentBoxNum = view.getUint8(GEN2_CURRENT_BOX_OFFSET) & 0x7F; // Lower 7 bits
