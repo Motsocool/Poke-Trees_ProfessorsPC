@@ -36,8 +36,12 @@ const SPECIES_GENDER_RATIOS: { [key: number]: number } = {
   // Common Gen 1 Pokemon
   25: GenderRatio.MALE_50,    // Pikachu
   26: GenderRatio.MALE_50,    // Raichu
-  32: GenderRatio.MALE_ONLY,  // Nidoran♂
   29: GenderRatio.FEMALE_ONLY,// Nidoran♀
+  30: GenderRatio.FEMALE_ONLY,// Nidorina
+  31: GenderRatio.FEMALE_ONLY,// Nidoqueen
+  32: GenderRatio.MALE_ONLY,  // Nidoran♂
+  33: GenderRatio.MALE_ONLY,  // Nidorino
+  34: GenderRatio.MALE_ONLY,  // Nidoking
   81: GenderRatio.GENDERLESS, // Magnemite
   82: GenderRatio.GENDERLESS, // Magneton
   120: GenderRatio.GENDERLESS,// Staryu
@@ -129,7 +133,11 @@ const SPECIES_GENDER_RATIOS: { [key: number]: number } = {
 
 /**
  * Get gender ratio for a species
- * Returns 50/50 ratio if species not found
+ * Returns 50/50 ratio as default if species not found in mapping
+ * 
+ * Note: This default assumes unknown species follow the most common 50/50 distribution.
+ * Most Pokemon in the games have either 50/50 or 87.5% male ratios, so this is a
+ * reasonable fallback for unmapped species, though not 100% accurate for all cases.
  */
 function getGenderRatio(species: number): number {
   return SPECIES_GENDER_RATIOS[species] ?? GenderRatio.MALE_50;
