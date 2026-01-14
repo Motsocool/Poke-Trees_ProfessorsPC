@@ -42,8 +42,9 @@ export interface InjectionResult {
 
 /**
  * Calculate which PC section and offset within that section for a given Pokemon index
+ * Exported for testing purposes
  */
-function calculatePokemonLocation(pokemonIndex: number): { sectionId: number; offsetInSection: number } {
+export function calculatePokemonLocation(pokemonIndex: number): { sectionId: number; offsetInSection: number } {
   if (pokemonIndex < 0 || pokemonIndex >= NUM_BOXES * POKEMON_PER_BOX) {
     throw new Error(`Invalid pokemon index: ${pokemonIndex}`);
   }

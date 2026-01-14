@@ -83,8 +83,9 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
 /**
  * Calculate Gen 2 checksum
  * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D0C (inclusive)
+ * Exported for testing purposes
  */
-function calculateGen2Checksum(view: DataView): number {
+export function calculateGen2Checksum(view: DataView): number {
   let sum = 0;
   const start = 0x2009;
   const end = 0x2D0C;

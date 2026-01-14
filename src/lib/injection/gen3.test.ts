@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { calculatePokemonLocation } from './gen3';
 
 /**
  * Test the Gen 3 PC section Pokemon location calculation
@@ -14,34 +15,6 @@ const SECTION_5_POKEMON_CAPACITY = Math.floor((GEN3_SECTION_DATA_SIZE - PC_METAD
 const OTHER_SECTION_POKEMON_CAPACITY = Math.floor(GEN3_SECTION_DATA_SIZE / PK3_SIZE); // 51
 const NUM_BOXES = 14;
 const POKEMON_PER_BOX = 30;
-
-/**
- * Calculate which PC section and offset within that section for a given Pokemon index
- * (Copy of the function from gen3.ts for testing)
- */
-function calculatePokemonLocation(pokemonIndex: number): { sectionId: number; offsetInSection: number } {
-  if (pokemonIndex < 0 || pokemonIndex >= NUM_BOXES * POKEMON_PER_BOX) {
-    throw new Error(`Invalid pokemon index: ${pokemonIndex}`);
-  }
-
-  // Section 5 has metadata at the start, then 49 Pokemon
-  if (pokemonIndex < SECTION_5_POKEMON_CAPACITY) {
-    return {
-      sectionId: SECTION_ID_PC_BUFFER_A,
-      offsetInSection: PC_METADATA_SIZE + (pokemonIndex * PK3_SIZE),
-    };
-  }
-
-  // Remaining Pokemon are in sections 6-13, each holding 51 Pokemon
-  const remainingIndex = pokemonIndex - SECTION_5_POKEMON_CAPACITY;
-  const sectionOffset = Math.floor(remainingIndex / OTHER_SECTION_POKEMON_CAPACITY);
-  const pokemonOffsetInSection = remainingIndex % OTHER_SECTION_POKEMON_CAPACITY;
-
-  return {
-    sectionId: SECTION_ID_PC_BUFFER_A + 1 + sectionOffset,
-    offsetInSection: pokemonOffsetInSection * PK3_SIZE,
-  };
-}
 
 describe('Gen 3 PC Section Pokemon Location Calculation', () => {
   it('should calculate correct section for Box 0, Slot 0', () => {

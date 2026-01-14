@@ -1,26 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { calculateGen2Checksum } from './gen2';
 
 /**
  * Test the Gen 2 checksum calculation
  * This validates the fix for the Gen 2 checksum mismatch error
  */
-
-/**
- * Calculate Gen 2 checksum
- * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D0C (inclusive)
- * (Copy of the function from gen2.ts for testing)
- */
-function calculateGen2Checksum(view: DataView): number {
-  let sum = 0;
-  const start = 0x2009;
-  const end = 0x2D0C;
-  
-  for (let i = start; i <= end; i++) {
-    sum = (sum + view.getUint8(i)) & 0xFFFF;
-  }
-  
-  return sum;
-}
 
 describe('Gen 2 Checksum Calculation', () => {
   it('should calculate checksum as 16-bit sum', () => {
