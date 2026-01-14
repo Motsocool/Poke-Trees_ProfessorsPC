@@ -21,10 +21,10 @@ const NUM_BOXES = 14;
 const POKEMON_PER_BOX = 30;
 
 // PC Buffer structure:
-// Section 5: 4 bytes metadata + 126 bytes box names + 14 bytes wallpapers + Pokemon data
-// = 144 bytes metadata, then 49 Pokemon (80 bytes each)
+// Section 5: 144 bytes metadata (4 bytes current box + 126 bytes box names + 14 bytes wallpapers)
+//            followed by 49 Pokemon (80 bytes each)
 // Sections 6-12: 51 Pokemon each (80 bytes each)
-// Section 13: Remaining Pokemon (14)
+// Section 13: Remaining 14 Pokemon
 const PC_METADATA_SIZE = 144;
 const SECTION_5_POKEMON_CAPACITY = Math.floor((GEN3_SECTION_DATA_SIZE - PC_METADATA_SIZE) / PK3_SIZE); // 49
 const OTHER_SECTION_POKEMON_CAPACITY = Math.floor(GEN3_SECTION_DATA_SIZE / PK3_SIZE); // 51

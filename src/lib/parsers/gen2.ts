@@ -27,6 +27,9 @@ import {
 
 import {
   decodeGen12String,
+  // Note: calculateGen12Checksum is not used here because Gen 2 uses a different algorithm
+  // Gen 2: 16-bit sum (with wrapping) of bytes from 0x2009 to 0x2D0C
+  // Gen 1: 8-bit two's complement of bytes
 } from './utils';
 
 import type { ParsedSaveFile, Box, Gen12Pokemon, DVs } from '../types';
