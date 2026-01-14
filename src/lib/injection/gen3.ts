@@ -20,6 +20,15 @@ import { calculateGen3SectionChecksum } from '../parsers/utils.js';
 const NUM_BOXES = 14;
 const POKEMON_PER_BOX = 30;
 
+// PC Buffer structure:
+// Section 5: 4 bytes metadata + 126 bytes box names + 14 bytes wallpapers + Pokemon data
+// = 144 bytes metadata, then 49 Pokemon (80 bytes each)
+// Sections 6-12: 51 Pokemon each (80 bytes each)
+// Section 13: Remaining Pokemon (14)
+const PC_METADATA_SIZE = 144;
+const SECTION_5_POKEMON_CAPACITY = Math.floor((GEN3_SECTION_DATA_SIZE - PC_METADATA_SIZE) / PK3_SIZE); // 49
+const OTHER_SECTION_POKEMON_CAPACITY = Math.floor(GEN3_SECTION_DATA_SIZE / PK3_SIZE); // 51
+
 export interface InjectionTarget {
   boxIndex: number; // 0-13 (14 boxes in Gen 3)
   slotIndex: number; // 0-29 (30 Pokémon per box)
@@ -29,6 +38,33 @@ export interface InjectionResult {
   success: boolean;
   error?: string;
   modifiedSections: number[];
+}
+
+/**
+ * Calculate which PC section and offset within that section for a given Pokemon index
+ */
+function calculatePokemonLocation(pokemonIndex: number): { sectionId: number; offsetInSection: number } {
+  if (pokemonIndex < 0 || pokemonIndex >= NUM_BOXES * POKEMON_PER_BOX) {
+    throw new Error(`Invalid pokemon index: ${pokemonIndex}`);
+  }
+
+  // Section 5 has metadata at the start, then 49 Pokemon
+  if (pokemonIndex < SECTION_5_POKEMON_CAPACITY) {
+    return {
+      sectionId: SECTION_ID_PC_BUFFER_A,
+      offsetInSection: PC_METADATA_SIZE + (pokemonIndex * PK3_SIZE),
+    };
+  }
+
+  // Remaining Pokemon are in sections 6-13, each holding 51 Pokemon
+  const remainingIndex = pokemonIndex - SECTION_5_POKEMON_CAPACITY;
+  const sectionOffset = Math.floor(remainingIndex / OTHER_SECTION_POKEMON_CAPACITY);
+  const pokemonOffsetInSection = remainingIndex % OTHER_SECTION_POKEMON_CAPACITY;
+
+  return {
+    sectionId: SECTION_ID_PC_BUFFER_A + 1 + sectionOffset,
+    offsetInSection: pokemonOffsetInSection * PK3_SIZE,
+  };
 }
 
 /**
@@ -63,9 +99,9 @@ export function injectPokemonToGen3Save(
 
   // Calculate which section and offset within section
   const pokemonIndex = target.boxIndex * POKEMON_PER_BOX + target.slotIndex;
-  const pcSectionIndex = Math.floor(pokemonIndex / 14); // ~14 Pokémon per PC section
-  const sectionId = SECTION_ID_PC_BUFFER_A + pcSectionIndex;
-  const offsetInPcData = (pokemonIndex % 14) * PK3_SIZE;
+  const location = calculatePokemonLocation(pokemonIndex);
+  const sectionId = location.sectionId;
+  const offsetInSection = location.offsetInSection;
 
   // Find the section
   const sectionOffset = findSectionOffset(view, activeSaveOffset, sectionId);
@@ -78,8 +114,7 @@ export function injectPokemonToGen3Save(
   const pk3Bytes = new Uint8Array(pk3Buffer);
 
   // Write Pokémon data into section
-  // PC sections have 4-byte header, then Pokémon data
-  const writeOffset = sectionOffset + 4 + offsetInPcData;
+  const writeOffset = sectionOffset + offsetInSection;
   for (let i = 0; i < PK3_SIZE; i++) {
     writeU8(view, writeOffset + i, pk3Bytes[i] ?? 0);
   }
@@ -167,13 +202,13 @@ export function findEmptySlots(saveBuffer: ArrayBuffer): InjectionTarget[] {
   for (let boxIndex = 0; boxIndex < NUM_BOXES; boxIndex++) {
     for (let slotIndex = 0; slotIndex < POKEMON_PER_BOX; slotIndex++) {
       const pokemonIndex = boxIndex * POKEMON_PER_BOX + slotIndex;
-      const pcSectionIndex = Math.floor(pokemonIndex / 14);
-      const sectionId = SECTION_ID_PC_BUFFER_A + pcSectionIndex;
-      const offsetInPcData = (pokemonIndex % 14) * PK3_SIZE;
+      const location = calculatePokemonLocation(pokemonIndex);
+      const sectionId = location.sectionId;
+      const offsetInSection = location.offsetInSection;
 
       const sectionOffset = findSectionOffset(view, activeSaveOffset, sectionId);
       if (sectionOffset !== -1) {
-        const readOffset = sectionOffset + 4 + offsetInPcData;
+        const readOffset = sectionOffset + offsetInSection;
 
         // Check if slot is empty (all zeros or zero personality value)
         const personality = readU32(view, readOffset);

@@ -27,7 +27,6 @@ import {
 
 import {
   decodeGen12String,
-  calculateGen12Checksum,
 } from './utils';
 
 import type { ParsedSaveFile, Box, Gen12Pokemon, DVs } from '../types';
@@ -83,9 +82,18 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
 
 /**
  * Calculate Gen 2 checksum
+ * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D0C (inclusive)
  */
 function calculateGen2Checksum(view: DataView): number {
-  return calculateGen12Checksum(view, 0x2009, 0x0D60);
+  let sum = 0;
+  const start = 0x2009;
+  const end = 0x2D0C;
+  
+  for (let i = start; i <= end; i++) {
+    sum = (sum + view.getUint8(i)) & 0xFFFF;
+  }
+  
+  return sum;
 }
 
 /**
