@@ -10,6 +10,7 @@ import { autoNormalizeSave } from '../lib/parsers/normalization';
 import { convertGen12ToGen3 } from '../lib/conversion/dvToIv';
 import { encodePokemonToPk3 } from '../lib/conversion/pk3Encoder';
 import { checkLegality } from '../lib/legality/validator';
+import { makeErrorUserFriendly, formatErrorForDisplay } from '../lib/utils/errorMessages';
 import type { Gen12Pokemon, VaultPokemon } from '../lib/types';
 
 interface SaveImportProps {
@@ -65,8 +66,10 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
       // Reset file input
       event.target.value = '';
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(message);
+      const error = err instanceof Error ? err : new Error('Unknown error occurred');
+      const userFriendlyError = makeErrorUserFriendly(error);
+      const displayMessage = formatErrorForDisplay(userFriendlyError, true);
+      setError(displayMessage);
       console.error('Import error:', err);
     } finally {
       setLoading(false);

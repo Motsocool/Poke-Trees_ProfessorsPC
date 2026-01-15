@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { injectPokemonToGen3Save, findEmptySlots, validateInjectionTarget, type InjectionTarget } from '../lib/injection/gen3';
 import type { StoredPokemon } from '../lib/db/vaultDb';
 import { decodePk3 } from '../lib/gen3/pk3/pk3';
+import { makeErrorUserFriendly, formatErrorForDisplay } from '../lib/utils/errorMessages';
 
 // Delay before cleaning up download link to ensure download starts
 const DOWNLOAD_CLEANUP_DELAY_MS = 100;
@@ -45,7 +46,10 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       setError(null);
     } catch (err) {
       console.error('Load error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load save file');
+      const error = err instanceof Error ? err : new Error('Unknown error occurred');
+      const userFriendlyError = makeErrorUserFriendly(error);
+      const displayMessage = formatErrorForDisplay(userFriendlyError, true);
+      setError(displayMessage);
       setSaveFile(null);
       setStatus('');
     }
@@ -126,7 +130,10 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       }
     } catch (err) {
       console.error('Injection error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to inject Pokémon');
+      const error = err instanceof Error ? err : new Error('Unknown error occurred');
+      const userFriendlyError = makeErrorUserFriendly(error);
+      const displayMessage = formatErrorForDisplay(userFriendlyError, true);
+      setError(displayMessage);
       setStatus('');
     }
   };
