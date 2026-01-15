@@ -158,18 +158,14 @@ export function parseMisc(data: Uint8Array): MiscData {
   };
 }
 
+import { calculateLevelFromExp } from '../../parsers/experienceCalculations';
+
 /**
- * Calculate level from experience using a simplified formula
- * In production, this should use proper experience tables for each growth rate
+ * Calculate level from experience using proper growth rate tables
+ * This is a wrapper function for backward compatibility
  */
-export function calculateLevel(experience: number): number {
-  // Simplified cubic formula approximation (Medium Slow growth rate)
-  // Real implementation needs proper lookup tables
-  if (experience === 0) return 1;
-  
-  // Approximate level using cubic root
-  const level = Math.floor(Math.pow(experience / 1.2, 1/3));
-  return Math.max(1, Math.min(100, level));
+export function calculateLevel(experience: number, species: number = 1): number {
+  return calculateLevelFromExp(species, experience);
 }
 
 /**

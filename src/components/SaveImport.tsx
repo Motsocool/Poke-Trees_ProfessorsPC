@@ -95,7 +95,7 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
         
         const nickname = decodeGen3String(pk3.nickname);
         const otName = decodeGen3String(pk3.otName);
-        const level = calculateLevel(growth.experience);
+        const level = calculateLevel(growth.experience, growth.species);
 
         toStore.push({
           pk3Data: serializePk3ForStorage(pk3),
