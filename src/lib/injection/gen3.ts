@@ -94,9 +94,9 @@ export function injectPokemonToGen3Save(
   const view = new DataView(newSave);
 
   // Find active save slot
-  const slot0Index = readU32(view, GEN3_SAVE_SLOT_SIZE - 4);
-  const slot1Index = readU32(view, GEN3_SAVE_SIZE - 4);
-  const activeSaveOffset = slot0Index >= slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
+  const slot0Index = readU32(view, 0x0FFC);
+  const slot1Index = readU32(view, GEN3_SAVE_SLOT_SIZE + 0x0FFC);
+  const activeSaveOffset = slot0Index > slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
 
   // Calculate which section and offset within section
   const pokemonIndex = target.boxIndex * POKEMON_PER_BOX + target.slotIndex;
@@ -207,9 +207,9 @@ export function findEmptySlots(saveBuffer: ArrayBuffer): InjectionTarget[] {
   const emptySlots: InjectionTarget[] = [];
 
   // Find active save slot
-  const slot0Index = readU32(view, GEN3_SAVE_SLOT_SIZE - 4);
-  const slot1Index = readU32(view, GEN3_SAVE_SIZE - 4);
-  const activeSaveOffset = slot0Index >= slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
+  const slot0Index = readU32(view, 0x0FFC);
+  const slot1Index = readU32(view, GEN3_SAVE_SLOT_SIZE + 0x0FFC);
+  const activeSaveOffset = slot0Index > slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
 
   // Check each PC section for empty slots
   for (let boxIndex = 0; boxIndex < NUM_BOXES; boxIndex++) {
