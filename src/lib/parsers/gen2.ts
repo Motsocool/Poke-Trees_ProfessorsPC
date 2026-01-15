@@ -90,13 +90,15 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
 
 /**
  * Calculate Gen 2 checksum
- * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D0C (inclusive)
+ * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D08 (inclusive)
+ * The checksum is stored at 0x2D0C (16-bit little-endian) but is NOT included in the calculation
+ * Reference: https://github.com/pret/pokecrystal and Bulbapedia Gen 2 save structure
  * Exported for testing purposes
  */
 export function calculateGen2Checksum(view: DataView): number {
   let sum = 0;
   const start = 0x2009;
-  const end = 0x2D0C;
+  const end = 0x2D08;
   
   for (let i = start; i <= end; i++) {
     sum = (sum + view.getUint8(i)) & 0xFFFF;

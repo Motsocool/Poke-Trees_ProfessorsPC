@@ -94,8 +94,10 @@ export function injectPokemonToGen3Save(
   const view = new DataView(newSave);
 
   // Find active save slot
-  const slot0Index = readU32(view, GEN3_SAVE_SLOT_SIZE - 4);
-  const slot1Index = readU32(view, GEN3_SAVE_SIZE - 4);
+  // Use >= to give slot 0 precedence when counters are equal (edge case but per pokeemerald spec)
+  // Reference: https://github.com/pret/pokeemerald and Bulbapedia Gen 3 save structure
+  const slot0Index = readU32(view, 0x0FFC);
+  const slot1Index = readU32(view, GEN3_SAVE_SLOT_SIZE + 0x0FFC);
   const activeSaveOffset = slot0Index >= slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
 
   // Calculate which section and offset within section
@@ -207,8 +209,10 @@ export function findEmptySlots(saveBuffer: ArrayBuffer): InjectionTarget[] {
   const emptySlots: InjectionTarget[] = [];
 
   // Find active save slot
-  const slot0Index = readU32(view, GEN3_SAVE_SLOT_SIZE - 4);
-  const slot1Index = readU32(view, GEN3_SAVE_SIZE - 4);
+  // Use >= to give slot 0 precedence when counters are equal (edge case but per pokeemerald spec)
+  // Reference: https://github.com/pret/pokeemerald and Bulbapedia Gen 3 save structure
+  const slot0Index = readU32(view, 0x0FFC);
+  const slot1Index = readU32(view, GEN3_SAVE_SLOT_SIZE + 0x0FFC);
   const activeSaveOffset = slot0Index >= slot1Index ? 0 : GEN3_SAVE_SLOT_SIZE;
 
   // Check each PC section for empty slots
