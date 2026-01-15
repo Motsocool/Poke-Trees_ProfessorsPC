@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getAllPokemon, countPokemon, StoredPokemon, clearVault, deletePokemon } from '../lib/db/vaultDb';
+import { getAllPokemon, countPokemon, StoredPokemon, clearVault, deletePokemon, addPokemon } from '../lib/db/vaultDb';
 import { getSpeciesName } from '../lib/species/speciesTranscode';
+import { getEncounter, getAvailableEncounterCodes } from '../lib/events/encounterDatabase';
+import { generate } from '../lib/events/encounterGenerator';
 
 interface VaultViewProps {
   onSelectPokemon: (pokemon: StoredPokemon) => void;
@@ -17,6 +19,8 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
   const [filterGeneration, setFilterGeneration] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
+  const [cheatCode, setCheatCode] = useState('');
+  const [cheatMessage, setCheatMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const loadPokemon = async () => {
     setLoading(true);
@@ -416,6 +420,136 @@ export default function VaultView({ onSelectPokemon, selectedPokemon }: VaultVie
           No Pokémon match your search
         </div>
       )}
+
+      {/* Event Pokémon Cheat Code Input */}
+      <div style={{
+        marginTop: '24px',
+        padding: '20px',
+        background: '#f0f4ff',
+        borderRadius: '12px',
+        border: '2px solid #667eea',
+      }}>
+        <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#667eea' }}>
+          🎁 Event Pokémon Cheat Code
+        </h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
+          Enter an event code to add special distribution Pokémon to your vault.
+        </p>
+        
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text"
+            placeholder="Enter code (e.g., MYSTRY, WISHMKR, 10ANIV-CELEBI)"
+            value={cheatCode}
+            onChange={(e) => {
+              setCheatCode(e.target.value);
+              setCheatMessage(null);
+            }}
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter') {
+                await handleCheatCode();
+              }
+            }}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '8px',
+              border: '2px solid #e2e8f0',
+              fontSize: '16px',
+              fontFamily: 'monospace',
+            }}
+          />
+          <button
+            onClick={handleCheatCode}
+            className="btn-primary"
+            style={{ minWidth: '120px' }}
+          >
+            Redeem Code
+          </button>
+        </div>
+
+        {cheatMessage && (
+          <div style={{
+            padding: '12px',
+            borderRadius: '8px',
+            background: cheatMessage.type === 'success' ? '#c6f6d5' : '#fed7d7',
+            color: cheatMessage.type === 'success' ? '#22543d' : '#c53030',
+            fontSize: '14px',
+            fontWeight: 'bold',
+          }}>
+            {cheatMessage.text}
+          </div>
+        )}
+
+        <details style={{ marginTop: '16px' }}>
+          <summary style={{
+            cursor: 'pointer',
+            fontSize: '14px',
+            color: '#667eea',
+            fontWeight: 'bold',
+            padding: '8px',
+          }}>
+            📋 Available Event Codes ({getAvailableEncounterCodes().length})
+          </summary>
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            background: 'white',
+            borderRadius: '8px',
+            maxHeight: '200px',
+            overflowY: 'auto',
+          }}>
+            {getAvailableEncounterCodes().map(code => {
+              const encounter = getEncounter(code);
+              return (
+                <div key={code} style={{
+                  padding: '8px',
+                  marginBottom: '8px',
+                  background: '#f7fafc',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#667eea' }}>
+                    {code}
+                  </span>
+                  <br />
+                  <span style={{ color: '#666' }}>{encounter?.description}</span>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      </div>
     </div>
   );
+
+  async function handleCheatCode() {
+    if (!cheatCode.trim()) {
+      setCheatMessage({ text: '⚠️ Please enter a cheat code', type: 'error' });
+      return;
+    }
+
+    const encounter = getEncounter(cheatCode);
+    if (!encounter) {
+      setCheatMessage({ text: `❌ Invalid code: "${cheatCode}". Check available codes below.`, type: 'error' });
+      return;
+    }
+
+    try {
+      const storedPokemon = generate(encounter);
+      await addPokemon(storedPokemon);
+      await loadPokemon();
+      setCheatCode('');
+      setCheatMessage({ 
+        text: `✨ Success! ${storedPokemon.nickname} (${encounter.description}) added to vault!`, 
+        type: 'success' 
+      });
+      
+      // Clear message after 5 seconds
+      setTimeout(() => setCheatMessage(null), 5000);
+    } catch (err) {
+      console.error('Failed to add event Pokémon:', err);
+      setCheatMessage({ text: '❌ Failed to add Pokémon. Try again.', type: 'error' });
+    }
+  }
 }

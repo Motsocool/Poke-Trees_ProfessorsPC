@@ -6,6 +6,9 @@ import { injectPokemonToGen3Save, findEmptySlots, validateInjectionTarget, type 
 import type { StoredPokemon } from '../lib/db/vaultDb';
 import { decodePk3 } from '../lib/gen3/pk3/pk3';
 
+// Delay before cleaning up download link to ensure download starts
+const DOWNLOAD_CLEANUP_DELAY_MS = 100;
+
 interface ExportSaveProps {
   vaultPokemon: StoredPokemon[];
 }
@@ -96,18 +99,31 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       }
 
       // Download modified save
-      const blob = new Blob([currentSave], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = saveFileName.replace('.sav', '_modified.sav');
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      try {
+        const blob = new Blob([currentSave], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const downloadName = saveFileName.replace('.sav', '_modified.sav');
+        a.href = url;
+        a.download = downloadName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        
+        // Trigger download
+        a.click();
+        
+        // Clean up after a short delay to ensure download starts
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, DOWNLOAD_CLEANUP_DELAY_MS);
 
-      setStatus(`Successfully injected ${selectedPokemon.length} Pokémon! Downloaded as ${a.download}`);
-      setError(null);
+        setStatus(`✅ Successfully injected ${selectedPokemon.length} Pokémon! Download started: "${downloadName}"`);
+        setError(null);
+      } catch (downloadErr) {
+        console.error('Download error:', downloadErr);
+        throw new Error(`Failed to download modified save: ${downloadErr instanceof Error ? downloadErr.message : String(downloadErr)}`);
+      }
     } catch (err) {
       console.error('Injection error:', err);
       setError(err instanceof Error ? err.message : 'Failed to inject Pokémon');
@@ -205,8 +221,16 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
           disabled={!saveFile || selectedPokemon.length === 0}
           className="inject-button"
         >
-          Inject {selectedPokemon.length} Pokémon
+          {selectedPokemon.length > 0 
+            ? `Inject & Download (${selectedPokemon.length} Pokémon)` 
+            : 'Inject & Download'}
         </button>
+        {!saveFile && (
+          <p className="button-hint">⬆️ Load a save file first</p>
+        )}
+        {saveFile && selectedPokemon.length === 0 && (
+          <p className="button-hint">⬆️ Select at least one Pokémon</p>
+        )}
       </div>
 
       {status && (
@@ -218,6 +242,12 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       {error && (
         <div className="error-message">
           ⚠️ {error}
+        </div>
+      )}
+
+      {status && status.includes('Download started') && (
+        <div className="download-help">
+          <p><small>💡 If the download didn't start, check your browser's download settings or pop-up blocker.</small></p>
         </div>
       )}
 

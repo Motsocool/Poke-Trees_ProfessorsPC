@@ -70,7 +70,19 @@ export function injectPokemonToGen3Save(
   // Find the section
   const sectionOffset = findSectionOffset(view, activeSaveOffset, sectionId);
   if (sectionOffset === -1) {
-    throw new Error(`Could not find PC section ${sectionId} in save file`);
+    // Debug: list all sections found in save
+    const foundSections: number[] = [];
+    for (let i = 0; i < GEN3_NUM_SECTIONS; i++) {
+      const offset = activeSaveOffset + (i * GEN3_SECTION_SIZE);
+      const footerOffset = offset + GEN3_SECTION_DATA_SIZE;
+      const id = readU16(view, footerOffset);
+      foundSections.push(id);
+    }
+    throw new Error(
+      `Could not find PC section ${sectionId} in save file. ` +
+      `Looking for Box ${target.boxIndex + 1}, Slot ${target.slotIndex + 1} (pokemonIndex=${pokemonIndex}, sectionId=${sectionId}). ` +
+      `Found sections: [${foundSections.join(', ')}]`
+    );
   }
 
   // Encode pk3 data
