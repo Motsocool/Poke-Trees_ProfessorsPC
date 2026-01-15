@@ -78,7 +78,8 @@ export function parseGen3Save(buffer: Uint8Array): ParsedSaveFile {
   const slot0SaveIndex = readU32LE(buffer, 0x0FFC);
   const slot1SaveIndex = readU32LE(buffer, GEN3_SAVE_SLOT_SIZE + 0x0FFC);
   
-  // Use >= to give slot 0 precedence when counters are equal (edge case but per spec)
+  // Use >= to give slot 0 precedence when counters are equal (edge case but per pokeemerald spec)
+  // Reference: https://github.com/pret/pokeemerald and Bulbapedia Gen 3 save structure
   const activeSaveOffset = slot0SaveIndex >= slot1SaveIndex ? 0 : GEN3_SAVE_SLOT_SIZE;
 
   // Parse sections
