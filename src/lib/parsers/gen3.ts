@@ -145,11 +145,69 @@ function parseSections(buffer: Uint8Array, offset: number): Section[] {
 }
 
 /**
- * Validate section checksums
+ * Validate section checksums and IDs
  */
 function validateSections(sections: Section[]): void {
+  // First, validate that all section IDs are within valid range (0-13)
+  const invalidSections: number[] = [];
+  const sectionIds: number[] = [];
+  
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    if (!section) continue; // Skip if section is undefined
+    
+    sectionIds.push(section.id);
+    
+    // Check if section ID is out of range
+    if (section.id < 0 || section.id >= GEN3_NUM_SAVE_BLOCKS) {
+      invalidSections.push(i);
+    }
+  }
+  
+  // If any sections have invalid IDs, throw an error with diagnostic info
+  if (invalidSections.length > 0) {
+    const invalidList = invalidSections.map(i => {
+      const section = sections[i];
+      return section ? `position ${i}: ID ${section.id}` : `position ${i}: undefined`;
+    }).join(', ');
+    throw new Error(
+      `Corrupted save file: Found ${invalidSections.length} section(s) with invalid IDs. ` +
+      `Invalid sections at ${invalidList}. ` +
+      `All section IDs must be in range 0-13. ` +
+      `Found IDs: [${sectionIds.join(', ')}]. ` +
+      `This save file may be corrupted or from an incompatible game.`
+    );
+  }
+  
+  // Verify all required section IDs (0-13) are present
+  const expectedIds = Array.from({ length: GEN3_NUM_SAVE_BLOCKS }, (_, i) => i);
+  const missingIds = expectedIds.filter(id => !sectionIds.includes(id));
+  
+  if (missingIds.length > 0) {
+    throw new Error(
+      `Corrupted save file: Missing required section IDs: [${missingIds.join(', ')}]. ` +
+      `Found section IDs: [${sectionIds.join(', ')}]. ` +
+      `All sections 0-13 must be present. ` +
+      `This save file may be corrupted or from an incompatible game.`
+    );
+  }
+  
+  // Check for duplicate section IDs
+  const duplicates = sectionIds.filter((id, index) => sectionIds.indexOf(id) !== index);
+  if (duplicates.length > 0) {
+    const uniqueDuplicates = [...new Set(duplicates)];
+    throw new Error(
+      `Corrupted save file: Found duplicate section IDs: [${uniqueDuplicates.join(', ')}]. ` +
+      `Each section ID (0-13) must appear exactly once. ` +
+      `Found section IDs: [${sectionIds.join(', ')}]. ` +
+      `This save file may be corrupted.`
+    );
+  }
+  
+  // Now validate checksums (warnings only, as some saves may have checksum issues but still be usable)
   for (const section of sections) {
-    const calculated = calculateGen3SectionChecksum(section.data, 0, section.data.length);
+    const view = new DataView(section.data.buffer, section.data.byteOffset, section.data.byteLength);
+    const calculated = calculateGen3SectionChecksum(view, 0, section.data.length);
     if (calculated !== section.checksum) {
       console.warn(`Section ${section.id} checksum mismatch: stored=${section.checksum}, calculated=${calculated}`);
     }
