@@ -12,7 +12,7 @@ export const GEN2_PLAYER_NAME_LENGTH = 11;
 export const GEN2_PLAYER_ID_OFFSET = 0x2009 + 0x7;
 
 // Checksum
-export const GEN2_CHECKSUM_OFFSET = 0x2D0D;
+export const GEN2_CHECKSUM_OFFSET = 0x2D0C; // 16-bit little-endian checksum
 
 // Box data
 export const GEN2_CURRENT_BOX_OFFSET = 0x2724;

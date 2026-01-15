@@ -62,7 +62,7 @@ describe('Gen 2 Checksum Calculation', () => {
     view.setUint8(0x2009, 0x01); // Start of range
     view.setUint8(0x2D08, 0x01); // End of range
     view.setUint8(0x2D09, 0xFF); // After range - should not affect
-    view.setUint8(0x2D0C, 0xFF); // Checksum storage - should not affect
+    view.setUint8(0x2D0C, 0xFF); // Checksum storage (low byte) - should not affect
     
     const calculatedSum = calculateGen2Checksum(view);
     
@@ -94,7 +94,7 @@ describe('Gen 2 Checksum Calculation', () => {
     const buffer = new ArrayBuffer(0x8000);
     const view = new DataView(buffer);
     
-    // The checksum is stored at 0x2D0C but should not be included in calculation
+    // The checksum is stored at 0x2D0C (16-bit LE) but should not be included in calculation
     // Fill region with 0x01
     for (let i = 0x2009; i <= 0x2D08; i++) {
       view.setUint8(i, 0x01);
