@@ -146,15 +146,15 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
           const legalityCheck = checkLegality(gen3Pokemon);
 
           // Create full VaultPokemon structure for encoding
+          // Encode to pk3 binary format first
+          const pk3Data = encodePokemonToPk3(gen3Pokemon as any);
+
           const vaultPokemon: VaultPokemon = {
             ...gen3Pokemon,
             id: '', // Will be assigned by vault
             importDate: new Date(),
-            pk3Data: new ArrayBuffer(0), // Temporary, will be replaced
+            pk3Data: pk3Data,
           };
-
-          // Encode to pk3 binary format
-          const pk3Data = encodePokemonToPk3(vaultPokemon);
 
           toStore.push({
             pk3Data: pk3Data,

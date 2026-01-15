@@ -208,7 +208,7 @@ export const POKEMON_BASE_STATS: BaseStats[] = [
   { hp: 75, attack: 80, defense: 95, speed: 50, specialAttack: 90, specialDefense: 100 }, // 182 Bellossom
   { hp: 70, attack: 20, defense: 50, speed: 40, specialAttack: 20, specialDefense: 50 }, // 183 Marill
   { hp: 100, attack: 50, defense: 80, speed: 50, specialAttack: 60, specialDefense: 80 }, // 184 Azumarill
-  { hp: 70, attack: 20, defense: 50, speed: 40, specialAttack: 20, specialDefense: 50 }, // 185 Sudowoodo (placeholder - actually Rock type)
+  { hp: 70, attack: 100, defense: 115, speed: 30, specialAttack: 30, specialDefense: 65 }, // 185 Sudowoodo
   { hp: 55, attack: 70, defense: 55, speed: 85, specialAttack: 40, specialDefense: 55 }, // 186 Politoed
   { hp: 35, attack: 35, defense: 40, speed: 50, specialAttack: 35, specialDefense: 55 }, // 187 Hoppip
   { hp: 55, attack: 45, defense: 50, speed: 80, specialAttack: 45, specialDefense: 65 }, // 188 Skiploom
