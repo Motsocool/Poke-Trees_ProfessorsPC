@@ -3,6 +3,9 @@
  * Parses 32KB save files and extracts boxed Pokémon with DVs
  */
 
+import { calcGen1HP, calcGen1Stat } from './statCalculations';
+import { getBaseStats } from './baseStats';
+import { detectGen1Version } from './versionDetection';
 import {
   GEN1_SAVE_SIZE,
   GEN1_CHECKSUM_OFFSET,
@@ -52,8 +55,9 @@ export function parseGen1Save(buffer: ArrayBuffer): ParsedSaveFile {
   const trainerName = decodeGen12String(view, GEN1_PLAYER_NAME_OFFSET, GEN1_PLAYER_NAME_LENGTH);
   const trainerId = view.getUint16(GEN1_PLAYER_ID_OFFSET, true);
 
-  // Determine game version (simplified - Yellow has different offsets)
-  const gameVersion = GameVersion.RED;
+  // Determine game version using detection logic
+  const uint8Buffer = new Uint8Array(buffer);
+  const gameVersion = detectGen1Version(uint8Buffer);
 
   // Parse boxes
   const currentBoxNum = view.getUint8(GEN1_CURRENT_BOX_OFFSET);
@@ -193,13 +197,14 @@ function parseGen1Pokemon(
   // Check if would be shiny in Gen 2
   const shiny = isGen1ShinyDVs(dvs);
 
-  // Calculate stats (placeholder - would need base stats table)
+  // Calculate stats using proper Gen 1 formulas
+  const baseStats = getBaseStats(species);
   const stats = {
-    hp: currentHP,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    special: 50,
+    hp: calcGen1HP(baseStats.hp, dvs.hp, evs.hp, level),
+    attack: calcGen1Stat(baseStats.attack, dvs.attack, evs.attack, level),
+    defense: calcGen1Stat(baseStats.defense, dvs.defense, evs.defense, level),
+    speed: calcGen1Stat(baseStats.speed, dvs.speed, evs.speed, level),
+    special: calcGen1Stat(baseStats.specialAttack, dvs.special, evs.special, level),
   };
 
   return {

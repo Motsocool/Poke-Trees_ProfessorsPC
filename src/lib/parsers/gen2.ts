@@ -3,6 +3,10 @@
  * Parses 32KB save files and extracts boxed Pokémon with DVs
  */
 
+import { calcGen2HP, calcGen2Stat } from './statCalculations';
+import { getBaseStats } from './baseStats';
+import { determineGen2Gender } from './genderDetermination';
+import { detectGen2Version } from './versionDetection';
 import {
   GEN2_SAVE_SIZE,
   GEN2_CHECKSUM_OFFSET,
@@ -27,7 +31,9 @@ import {
 
 import {
   decodeGen12String,
-  calculateGen12Checksum,
+  // Note: calculateGen12Checksum is not used here because Gen 2 uses a different algorithm
+  // Gen 2: 16-bit sum (with wrapping) of bytes from 0x2009 to 0x2D0C
+  // Gen 1: 8-bit two's complement of bytes
 } from './utils';
 
 import type { ParsedSaveFile, Box, Gen12Pokemon, DVs } from '../types';
@@ -56,8 +62,9 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
   const trainerName = decodeGen12String(view, GEN2_PLAYER_NAME_OFFSET, GEN2_PLAYER_NAME_LENGTH);
   const trainerId = view.getUint16(GEN2_PLAYER_ID_OFFSET, true);
 
-  // Determine game version (simplified)
-  const gameVersion = GameVersion.CRYSTAL;
+  // Determine game version using detection logic
+  const uint8Buffer = new Uint8Array(buffer);
+  const gameVersion = detectGen2Version(uint8Buffer);
 
   // Parse boxes
   const currentBoxNum = view.getUint8(GEN2_CURRENT_BOX_OFFSET) & 0x7F; // Lower 7 bits
@@ -83,9 +90,19 @@ export function parseGen2Save(buffer: ArrayBuffer): ParsedSaveFile {
 
 /**
  * Calculate Gen 2 checksum
+ * Gen 2 uses a 16-bit sum of bytes from 0x2009 to 0x2D0C (inclusive)
+ * Exported for testing purposes
  */
-function calculateGen2Checksum(view: DataView): number {
-  return calculateGen12Checksum(view, 0x2009, 0x0D60);
+export function calculateGen2Checksum(view: DataView): number {
+  let sum = 0;
+  const start = 0x2009;
+  const end = 0x2D0C;
+  
+  for (let i = start; i <= end; i++) {
+    sum = (sum + view.getUint8(i)) & 0xFFFF;
+  }
+  
+  return sum;
 }
 
 /**
@@ -204,16 +221,19 @@ function parseGen2Pokemon(
   // Determine if shiny
   const shiny = isGen2Shiny(dvs);
 
-  // Determine gender from Attack DV (simplified)
-  const gender = dvs.attack >= 8 ? 'M' : 'F';
+  // Determine gender from Attack DV using proper species-specific ratios
+  const gender = determineGen2Gender(species, dvs.attack);
 
-  // Calculate stats (placeholder)
+  // Calculate stats using proper Gen 2 formulas
+  // Note: Gen 2 has SpAtk and SpDef, but uses one Special DV for both
+  const baseStats = getBaseStats(species);
+  const spDv = dvs.special; // One DV used for both SpAtk and SpDef
   const stats = {
-    hp: 100,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    special: 50,
+    hp: calcGen2HP(baseStats.hp, dvs.hp, evs.hp, level),
+    attack: calcGen2Stat(baseStats.attack, dvs.attack, evs.attack, level),
+    defense: calcGen2Stat(baseStats.defense, dvs.defense, evs.defense, level),
+    speed: calcGen2Stat(baseStats.speed, dvs.speed, evs.speed, level),
+    special: calcGen2Stat(baseStats.specialAttack, spDv, evs.special, level),
   };
 
   return {

@@ -3,6 +3,11 @@
  * Based on: https://github.com/pret/pokeemerald
  */
 
+import { calcGen3HP, calcGen3Stat, applyNatureModifier } from './statCalculations';
+import { getBaseStats } from './baseStats';
+import { calculateLevelFromExp } from './experienceCalculations';
+import { determineGen3Gender } from './genderDetermination';
+import { detectGen3Version } from './versionDetection';
 import {
   GEN3_SAVE_SIZE,
   GEN3_SAVE_SLOT_SIZE,
@@ -87,7 +92,7 @@ export function parseGen3Save(buffer: Uint8Array): ParsedSaveFile {
     throw new Error('Trainer info section not found');
   }
 
-  const metadata = parseTrainerInfo(trainerSection.data);
+  const metadata = parseTrainerInfo(trainerSection.data, buffer);
 
   // Parse PC boxes from Sections 5-13
   const boxes = parsePCBoxes(sections);
@@ -152,13 +157,13 @@ function validateSections(sections: Section[]): void {
 /**
  * Parse trainer info from Section 0
  */
-function parseTrainerInfo(data: Uint8Array): SaveFileMetadata {
+function parseTrainerInfo(data: Uint8Array, fullSaveBuffer: Uint8Array): SaveFileMetadata {
   const trainerName = decodeGen3String(data, 0, GEN3_PLAYER_NAME_LENGTH);
   const trainerId = readU16LE(data, 0x0A);
   const secretId = readU16LE(data, 0x0C);
   
-  // Detect game version (would need more logic)
-  const gameVersion = GameVersion.EMERALD;
+  // Detect game version using full save buffer for accurate detection
+  const gameVersion = detectGen3Version(fullSaveBuffer);
 
   return {
     game: gameVersion,
@@ -290,13 +295,13 @@ function parseGen3Pokemon(data: Uint8Array): Gen3Pokemon {
   // Calculate level from experience
   const level = calculateLevelFromExp(species, exp);
   
-  // Calculate stats
-  const stats = calculateGen3Stats(species, level, ivs, evs);
-  
   // Determine nature
   const nature = personalityValue % 25;
   
-  // Determine gender
+  // Calculate stats with nature modifiers
+  const stats = calculateGen3Stats(species, level, ivs, evs, nature);
+  
+  // Determine gender using proper species-specific ratios
   const gender = determineGen3Gender(species, personalityValue);
   
   // Determine if shiny
@@ -374,44 +379,31 @@ function isGen3Shiny(personality: number, otId: number): boolean {
   return xor < GEN3_SHINY_THRESHOLD;
 }
 
-/**
- * Determine gender (simplified)
- */
-function determineGen3Gender(species: number, personality: number): 'M' | 'F' | 'U' {
-  // Would need species gender ratio lookup
-  const genderByte = personality & 0xFF;
-  
-  // Simplified
-  if (genderByte < 127) {
-    return 'F';
-  } else if (genderByte < 255) {
-    return 'M';
-  }
-  
-  return 'U';
-}
+// determineGen3Gender is now imported from genderDetermination.ts
+
+// calculateLevelFromExp is now imported from experienceCalculations.ts
 
 /**
- * Calculate level from experience (placeholder)
+ * Calculate Gen 3 stats with nature modifiers
  */
-function calculateLevelFromExp(species: number, exp: number): number {
-  // Would need experience curve lookup
-  // Placeholder: assume medium-fast growth
-  if (exp === 0) return 1;
-  return Math.min(100, Math.floor(Math.pow(exp / 1000000, 1/3) * 100) + 1);
-}
-
-/**
- * Calculate Gen 3 stats
- */
-function calculateGen3Stats(species: number, level: number, ivs: IVs, evs: EVs): Stats {
-  // Placeholder - would need base stats lookup
+function calculateGen3Stats(species: number, level: number, ivs: IVs, evs: EVs, nature: number): Stats {
+  const baseStats = getBaseStats(species);
+  
+  // Calculate base stats before nature
+  const hp = calcGen3HP(baseStats.hp, ivs.hp, evs.hp, level);
+  const attack = calcGen3Stat(baseStats.attack, ivs.attack, evs.attack, level);
+  const defense = calcGen3Stat(baseStats.defense, ivs.defense, evs.defense, level);
+  const speed = calcGen3Stat(baseStats.speed, ivs.speed, evs.speed, level);
+  const specialAttack = calcGen3Stat(baseStats.specialAttack, ivs.specialAttack, evs.specialAttack, level);
+  const specialDefense = calcGen3Stat(baseStats.specialDefense, ivs.specialDefense, evs.specialDefense, level);
+  
+  // Apply nature modifiers (HP is never affected by nature)
   return {
-    hp: 100,
-    attack: 50,
-    defense: 50,
-    speed: 50,
-    specialAttack: 50,
-    specialDefense: 50,
+    hp,
+    attack: applyNatureModifier(attack, nature, 'attack'),
+    defense: applyNatureModifier(defense, nature, 'defense'),
+    speed: applyNatureModifier(speed, nature, 'speed'),
+    specialAttack: applyNatureModifier(specialAttack, nature, 'specialAttack'),
+    specialDefense: applyNatureModifier(specialDefense, nature, 'specialDefense'),
   };
 }
