@@ -11,6 +11,7 @@ import { convertGen12ToGen3 } from '../lib/conversion/dvToIv';
 import { encodePokemonToPk3 } from '../lib/conversion/pk3Encoder';
 import { checkLegality } from '../lib/legality/validator';
 import { makeErrorUserFriendly, formatErrorForDisplay } from '../lib/utils/errorMessages';
+import { isValidSpeciesId } from '../lib/gen3/validation';
 import type { Gen12Pokemon, VaultPokemon } from '../lib/types';
 
 interface SaveImportProps {
@@ -97,7 +98,7 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
         const growth = parseGrowth(substructs.growth);
         
         // Validate species before proceeding
-        if (growth.species === 0 || growth.species < 0 || growth.species > 440) {
+        if (!isValidSpeciesId(growth.species)) {
           skippedCount++;
           console.debug(`Skipped Pokémon at box ${box}, slot ${slot}: invalid species ${growth.species}`);
           continue;

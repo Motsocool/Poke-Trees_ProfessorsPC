@@ -3,6 +3,8 @@
  * Uses data from pokemon_exp.txt and pokemon_exp_groups.bin
  */
 
+import { isValidSpeciesId, isValidExperience, isValidGrowthRate } from '../gen3/validation';
+
 /**
  * Growth rate types (0-5)
  * Based on Gen 3 mechanics
@@ -163,10 +165,13 @@ const SPECIES_GROWTH_RATES: number[] = [
  */
 export function calculateLevelFromExp(species: number, exp: number): number {
   // Validate exp value
-  if (exp === 0 || exp < 0) return 1;
+  if (!isValidExperience(exp)) {
+    console.debug(`Invalid experience ${exp}, defaulting to level 1`);
+    return 1;
+  }
   
-  // Validate species ID (Gen 3 range is 1-386, but 0 is also used for empty slots)
-  if (species === 0 || species < 0 || species >= SPECIES_GROWTH_RATES.length) {
+  // Validate species ID
+  if (!isValidSpeciesId(species)) {
     console.debug(`Invalid species ID ${species} for level calculation, defaulting to level 1`);
     return 1;
   }
@@ -175,7 +180,7 @@ export function calculateLevelFromExp(species: number, exp: number): number {
   const growthRate = SPECIES_GROWTH_RATES[species];
   
   // Check if this is a valid growth rate
-  if (growthRate === undefined || growthRate < 0 || growthRate > 5) {
+  if (!isValidGrowthRate(growthRate)) {
     console.debug(`Invalid growth rate ${growthRate} for species ${species}, defaulting to level 1`);
     return 1;
   }
@@ -188,15 +193,14 @@ export function calculateLevelFromExp(species: number, exp: number): number {
  * Uses linear search through exp table
  */
 function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
-  // Validate growth rate
-  if (growthRate < 0 || growthRate > 5) {
+  // Validate growth rate (should already be validated, but double-check)
+  if (!isValidGrowthRate(growthRate)) {
     console.debug(`Invalid growth rate ${growthRate} in calculateLevelFromExpByRate`);
     return 1;
   }
   
-  // Validate exp is reasonable (max exp for level 100 is around 1.6M depending on growth rate)
-  // If exp is extremely high (>10M), it's likely corrupted data
-  if (exp > 10000000) {
+  // Validate exp is reasonable (should already be validated, but double-check)
+  if (!isValidExperience(exp)) {
     console.debug(`Suspicious exp value ${exp}, likely corrupted data`);
     return 1;
   }
