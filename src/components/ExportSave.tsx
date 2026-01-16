@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { injectPokemonToGen3Save, findEmptySlots, validateInjectionTarget, type InjectionTarget } from '../lib/injection/gen3';
 import type { StoredPokemon } from '../lib/db/vaultDb';
 import { decodePk3 } from '../lib/gen3/pk3/pk3';
+import { loadGen3Save } from '../lib/gen3/save/gen3Save';
 import { makeErrorUserFriendly, formatErrorForDisplay } from '../lib/utils/errorMessages';
 
 // Delay before cleaning up download link to ensure download starts
@@ -35,6 +36,10 @@ export function ExportSave({ vaultPokemon }: ExportSaveProps) {
       if (arrayBuffer.byteLength !== 131072) {
         throw new Error('Invalid save file size. Must be exactly 128KB (131,072 bytes) for Gen 3 saves.');
       }
+
+      // Validate save structure before allowing injection
+      // This will throw an error if the save has corrupted section IDs
+      loadGen3Save(arrayBuffer);
 
       setSaveFile(arrayBuffer);
       setSaveFileName(file.name);
