@@ -204,9 +204,11 @@ function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
   // Linear search through the exp table for this growth rate
   for (let level = 1; level <= 100; level++) {
     const requiredExp = getExpForLevel(level, growthRate);
+    // If we can't get the required exp for this level, something is wrong with our data
+    // In this case, we should keep going rather than returning 1
     if (requiredExp === undefined) {
-      console.debug(`Failed to get required exp for level ${level}, growth rate ${growthRate}`);
-      return 1;
+      console.debug(`Warning: Missing exp data for level ${level}, growth rate ${growthRate}`);
+      continue;
     }
     if (exp < requiredExp) {
       return Math.max(1, level - 1);
