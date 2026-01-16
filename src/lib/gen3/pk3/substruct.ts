@@ -29,6 +29,7 @@ import {
   MISC_IVS_OFFSET,
   MISC_RIBBONS_OFFSET,
 } from '../save/constants';
+import { isValidSpeciesId, isValidExperience } from '../validation';
 
 export interface GrowthData {
   species: number;
@@ -165,6 +166,18 @@ import { calculateLevelFromExp } from '../../parsers/experienceCalculations';
  * This is a wrapper function for backward compatibility
  */
 export function calculateLevel(experience: number, species: number = 1): number {
+  // Validate species ID
+  if (!isValidSpeciesId(species)) {
+    console.debug(`Invalid species ${species} in calculateLevel, defaulting to level 1`);
+    return 1;
+  }
+  
+  // Validate experience
+  if (!isValidExperience(experience)) {
+    console.debug(`Invalid experience ${experience} for species ${species}, defaulting to level 1`);
+    return 1;
+  }
+  
   return calculateLevelFromExp(species, experience);
 }
 

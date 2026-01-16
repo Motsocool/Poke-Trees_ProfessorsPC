@@ -138,6 +138,14 @@ export function extractPokemonFromSave(save: Gen3Save): ExtractedPokemon[] {
 
       try {
         const pk3 = decodePk3(pk3Buffer);
+        
+        // Additional validation: check if personality and otId are non-zero
+        // Empty/uninitialized slots often have PID=0
+        if (pk3.personality === 0) {
+          offset += PK3_SIZE;
+          continue;
+        }
+        
         const isValid = verifyPk3Checksum(pk3);
 
         pokemon.push({
@@ -147,8 +155,8 @@ export function extractPokemonFromSave(save: Gen3Save): ExtractedPokemon[] {
           isValid,
         });
       } catch (error) {
-        // Skip corrupted Pokémon
-        console.warn(`Failed to parse Pokémon at box ${box}, slot ${slot}:`, error);
+        // Skip corrupted Pokémon - log only once per slot
+        console.debug(`Skipped corrupted slot at box ${box}, slot ${slot}`);
       }
 
       offset += PK3_SIZE;
