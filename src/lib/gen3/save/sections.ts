@@ -134,6 +134,45 @@ export function verifySectionIntegrity(section: SaveSection): {
 }
 
 /**
+ * Validate that all required section IDs are present and valid
+ */
+export function validateSectionIds(sections: SaveSection[]): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  const sectionIds = sections.map(s => s.id);
+  
+  // Check for invalid section IDs (out of range)
+  const invalidIds = sections.filter(s => s.id < 0 || s.id >= GEN3_NUM_SECTIONS);
+  if (invalidIds.length > 0) {
+    errors.push(
+      `Found ${invalidIds.length} section(s) with invalid IDs (must be 0-${GEN3_NUM_SECTIONS - 1}): ` +
+      `[${invalidIds.map(s => s.id).join(', ')}]`
+    );
+  }
+  
+  // Check for missing section IDs
+  const expectedIds = Array.from({ length: GEN3_NUM_SECTIONS }, (_, i) => i);
+  const missingIds = expectedIds.filter(id => !sectionIds.includes(id));
+  if (missingIds.length > 0) {
+    errors.push(`Missing required section IDs: [${missingIds.join(', ')}]`);
+  }
+  
+  // Check for duplicate section IDs
+  const duplicates = sectionIds.filter((id, index) => sectionIds.indexOf(id) !== index);
+  if (duplicates.length > 0) {
+    const uniqueDuplicates = [...new Set(duplicates)];
+    errors.push(`Found duplicate section IDs: [${uniqueDuplicates.join(', ')}]`);
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
  * Parse all sections from a save slot
  */
 export function parseSaveSlot(buffer: ArrayBuffer, slotOffset: number): SaveSlot {
@@ -164,6 +203,12 @@ export function parseSaveSlot(buffer: ArrayBuffer, slotOffset: number): SaveSlot
         saveIndex: 0,
       });
     }
+  }
+  
+  // Also validate section IDs
+  const idValidation = validateSectionIds(sections);
+  if (!idValidation.valid) {
+    hasInvalidSection = true;
   }
 
   return {

@@ -7,6 +7,7 @@ import {
   determineActiveSlot,
   validateSaveSize,
   getSortedSections,
+  validateSectionIds,
 } from './sections';
 import {
   GEN3_SAVE_SIZE,
@@ -268,6 +269,58 @@ describe('Gen3 Save Sections', () => {
       const integrity = verifySectionIntegrity(section);
 
       expect(integrity.valid).toBe(true);
+    });
+  });
+
+  describe('validateSectionIds', () => {
+    it('should detect invalid section IDs', () => {
+      const saveFile = createTestSaveFile(100, 200);
+      const slot = parseSaveSlot(saveFile, 0);
+      
+      // Corrupt a section ID
+      slot.sections[7]!.id = 39132; // Invalid ID like in the error report
+      
+      const result = validateSectionIds(slot.sections);
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((e: string) => e.includes('invalid IDs'))).toBe(true);
+    });
+
+    it('should detect missing section IDs', () => {
+      const saveFile = createTestSaveFile(100, 200);
+      const slot = parseSaveSlot(saveFile, 0);
+      
+      // Change a section ID to create a duplicate and missing ID
+      slot.sections[5]!.id = 0; // Duplicate ID 0, missing ID 5
+      
+      const result = validateSectionIds(slot.sections);
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e: string) => e.includes('Missing'))).toBe(true);
+    });
+
+    it('should detect duplicate section IDs', () => {
+      const saveFile = createTestSaveFile(100, 200);
+      const slot = parseSaveSlot(saveFile, 0);
+      
+      // Create duplicate
+      slot.sections[5]!.id = 0; // Duplicate of section 0
+      
+      const result = validateSectionIds(slot.sections);
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e: string) => e.includes('duplicate'))).toBe(true);
+    });
+
+    it('should pass with valid section IDs', () => {
+      const saveFile = createTestSaveFile(100, 200);
+      const slot = parseSaveSlot(saveFile, 0);
+      
+      const result = validateSectionIds(slot.sections);
+      
+      expect(result.valid).toBe(true);
+      expect(result.errors.length).toBe(0);
     });
   });
 });
