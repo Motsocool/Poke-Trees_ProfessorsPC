@@ -162,18 +162,22 @@ const SPECIES_GROWTH_RATES: number[] = [
  * Uses the proper growth rate table lookup
  */
 export function calculateLevelFromExp(species: number, exp: number): number {
-  if (exp === 0) return 1;
-  if (exp < 0) return 1;
+  // Validate exp value
+  if (exp === 0 || exp < 0) return 1;
+  
+  // Validate species ID (Gen 3 range is 1-386, but 0 is also used for empty slots)
+  if (species === 0 || species < 0 || species >= SPECIES_GROWTH_RATES.length) {
+    console.debug(`Invalid species ID ${species} for level calculation, defaulting to level 1`);
+    return 1;
+  }
   
   // Get growth rate for this species
-  const growthRate = species < SPECIES_GROWTH_RATES.length 
-    ? SPECIES_GROWTH_RATES[species] 
-    : GrowthRate.MEDIUM_FAST; // Default to medium-fast if unknown
+  const growthRate = SPECIES_GROWTH_RATES[species];
   
   // Check if this is a valid growth rate
-  if (growthRate < 0 || growthRate > 5) {
-    // Invalid growth rate, use medium-fast
-    return calculateLevelFromExpByRate(exp, GrowthRate.MEDIUM_FAST);
+  if (growthRate === undefined || growthRate < 0 || growthRate > 5) {
+    console.debug(`Invalid growth rate ${growthRate} for species ${species}, defaulting to level 1`);
+    return 1;
   }
   
   return calculateLevelFromExpByRate(exp, growthRate);
@@ -184,9 +188,26 @@ export function calculateLevelFromExp(species: number, exp: number): number {
  * Uses linear search through exp table
  */
 function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
+  // Validate growth rate
+  if (growthRate < 0 || growthRate > 5) {
+    console.debug(`Invalid growth rate ${growthRate} in calculateLevelFromExpByRate`);
+    return 1;
+  }
+  
+  // Validate exp is reasonable (max exp for level 100 is around 1.6M depending on growth rate)
+  // If exp is extremely high (>10M), it's likely corrupted data
+  if (exp > 10000000) {
+    console.debug(`Suspicious exp value ${exp}, likely corrupted data`);
+    return 1;
+  }
+  
   // Linear search through the exp table for this growth rate
   for (let level = 1; level <= 100; level++) {
     const requiredExp = getExpForLevel(level, growthRate);
+    if (requiredExp === undefined) {
+      console.debug(`Failed to get required exp for level ${level}, growth rate ${growthRate}`);
+      return 1;
+    }
     if (exp < requiredExp) {
       return Math.max(1, level - 1);
     }
@@ -198,12 +219,24 @@ function calculateLevelFromExpByRate(exp: number, growthRate: number): number {
 /**
  * Get required experience for a given level and growth rate
  */
-function getExpForLevel(level: number, growthRate: number): number {
+function getExpForLevel(level: number, growthRate: number): number | undefined {
   if (level <= 1) return 0;
-  if (level > 100) return EXP_TABLE[99][growthRate]; // Max exp for level 100 (index 99)
+  
+  // Validate level
+  if (level > 100) {
+    const row = EXP_TABLE[99];
+    if (!row || row[growthRate] === undefined) {
+      return undefined;
+    }
+    return row[growthRate]; // Max exp for level 100 (index 99)
+  }
   
   // Level N is at index N-1 (level 1 at index 0, level 100 at index 99)
-  return EXP_TABLE[level - 1][growthRate];
+  const row = EXP_TABLE[level - 1];
+  if (!row || row[growthRate] === undefined) {
+    return undefined;
+  }
+  return row[growthRate];
 }
 
 /**

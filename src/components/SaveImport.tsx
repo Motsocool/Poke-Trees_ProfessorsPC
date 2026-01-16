@@ -89,11 +89,20 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
     // Extract Pokémon
     const extracted = extractPokemonFromSave(save);
     const toStore: StoredPokemon[] = [];
+    let skippedCount = 0;
 
     for (const { pk3, box, slot, isValid } of extracted) {
       try {
         const substructs = decryptAndUnshufflePk3(pk3);
         const growth = parseGrowth(substructs.growth);
+        
+        // Validate species before proceeding
+        if (growth.species === 0 || growth.species < 0 || growth.species > 440) {
+          skippedCount++;
+          console.debug(`Skipped Pokémon at box ${box}, slot ${slot}: invalid species ${growth.species}`);
+          continue;
+        }
+        
         const { tid, sid } = extractTrainerIds(pk3.otId);
         
         const nickname = decodeGen3String(pk3.nickname);
@@ -115,8 +124,13 @@ export default function SaveImport({ onImportComplete }: SaveImportProps) {
           importedAt: Date.now(),
         });
       } catch (err) {
-        console.warn(`Failed to parse Pokémon at box ${box}, slot ${slot}:`, err);
+        skippedCount++;
+        console.debug(`Skipped Pokémon at box ${box}, slot ${slot}: ${err instanceof Error ? err.message : 'unknown error'}`);
       }
+    }
+    
+    if (skippedCount > 0) {
+      console.log(`Import completed: ${toStore.length} Pokémon imported, ${skippedCount} slots skipped (empty/invalid)`);
     }
 
     return toStore;

@@ -165,6 +165,24 @@ import { calculateLevelFromExp } from '../../parsers/experienceCalculations';
  * This is a wrapper function for backward compatibility
  */
 export function calculateLevel(experience: number, species: number = 1): number {
+  // Validate species ID range (Gen 3: 1-386, but allow 0 for detection)
+  if (species < 0 || species > 440) {
+    console.debug(`Species ${species} out of valid range, defaulting to level 1`);
+    return 1;
+  }
+  
+  // Species 0 indicates empty slot
+  if (species === 0) {
+    console.debug('Species is 0 (empty slot), defaulting to level 1');
+    return 1;
+  }
+  
+  // Validate experience
+  if (experience < 0) {
+    console.debug(`Negative experience ${experience} for species ${species}, defaulting to level 1`);
+    return 1;
+  }
+  
   return calculateLevelFromExp(species, experience);
 }
 
